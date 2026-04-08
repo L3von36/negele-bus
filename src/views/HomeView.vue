@@ -208,7 +208,10 @@ function swap() {
 }
 
 const search = () => {
-  if (!fromCity.value || !toCity.value) return
+  if (!fromCity.value || !toCity.value) {
+    alert("Please select both Departure and Destination cities.");
+    return;
+  }
   
   router.push({
     path: '/search-results',
@@ -217,7 +220,7 @@ const search = () => {
       to:   toCity.value,
       date: travelDate.value || 'Today',
     }
-  })
+  });
 }
 
 const searchSpecific = (from, to) => {
@@ -228,7 +231,7 @@ const searchSpecific = (from, to) => {
       to,
       date: 'Today',
     }
-  })
+  });
 }
 
 // Map dynamic popular routes from store
