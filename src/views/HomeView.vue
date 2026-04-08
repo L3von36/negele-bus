@@ -28,7 +28,10 @@
             <option value="am" class="text-black">አማ</option>
             <option value="om" class="text-black">Orom</option>
           </select>
-          <button class="hidden sm:inline-flex px-4 py-2 bg-white/10 text-white text-sm rounded-lg hover:bg-white/20 transition-colors">
+          <button 
+            @click="search"
+            class="hidden sm:inline-flex px-4 py-2 bg-white/10 text-white text-sm rounded-lg hover:bg-white/20 transition-colors"
+          >
             {{ t('search_buses') }}
           </button>
           <button class="p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors">
@@ -97,7 +100,12 @@
                 <input v-model="travelDate" type="date" class="w-full px-3 sm:px-4 py-3 bg-background border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
               </div>
               <div class="flex items-end">
-                <button type="submit" class="w-full bg-accent text-white font-semibold px-8 py-3 rounded-xl hover:bg-black transition-colors duration-200 text-sm">
+                <button 
+                  type="submit" 
+                  :disabled="!fromCity || !toCity"
+                  :class="!fromCity || !toCity ? 'opacity-50 cursor-not-allowed' : 'hover:bg-black'"
+                  class="w-full bg-accent text-white font-semibold px-8 py-3 rounded-xl transition-colors duration-200 text-sm"
+                >
                   {{ t('search_buses') }}
                 </button>
               </div>
@@ -112,6 +120,7 @@
       <h3 class="text-lg sm:text-xl font-bold text-text-primary mb-5 sm:mb-8">{{ t('popular_routes') }}</h3>
       <div class="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div v-for="route in dynamicRoutes" :key="route.label"
+           @click="searchSpecific(route.fromId, route.toId)"
            class="bg-card rounded-xl border border-border shadow-soft p-4 flex items-center space-x-3 hover:border-accent group transition-all duration-300 hover:shadow-lg cursor-pointer transform hover:-translate-y-1">
           <div class="bg-background group-hover:bg-accent group-hover:text-white transition-colors duration-200 rounded-lg w-10 h-10 flex items-center justify-center flex-shrink-0 text-text-secondary">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -199,15 +208,25 @@ function swap() {
 }
 
 const search = () => {
-  const fromName = store.translations[store.activeLang].cities[fromCity.value] || fromCity.value || 'Negele Borena'
-  const toName   = store.translations[store.activeLang].cities[toCity.value]   || toCity.value   || 'Hawassa'
+  if (!fromCity.value || !toCity.value) return
   
   router.push({
     path: '/search-results',
     query: {
-      from: fromName,
-      to:   toName,
+      from: fromCity.value,
+      to:   toCity.value,
       date: travelDate.value || 'Today',
+    }
+  })
+}
+
+const searchSpecific = (from, to) => {
+  router.push({
+    path: '/search-results',
+    query: {
+      from,
+      to,
+      date: 'Today',
     }
   })
 }
@@ -222,7 +241,9 @@ const dynamicRoutes = computed(() => {
     
     return {
       label: `${t('cities.' + fromSlug)} → ${t('cities.' + toSlug)}`,
-      meta: `${t('from_label')} ${r.price} ${t('etb_label')} • ${r.duration}`
+      meta: `${t('from_label')} ${r.price} ${t('etb_label')} • ${r.duration}`,
+      fromId: fromSlug,
+      toId: toSlug
     }
   }).slice(0, 4)
 })

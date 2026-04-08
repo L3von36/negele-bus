@@ -69,7 +69,7 @@ export const store = reactive({
       official: 'ይፋዊ የትራንስፖርት ባለስልጣን',
       travel: 'በመተማመን',
       confidence: 'ይጓዙ።',
-      subtext: 'በቅጽበት ወንበርዎን ያስይዙ - ምንም አካውንት አያስፈልግም።',
+      subtext: 'ወንበርዎን አሁኑኑ ያስይዙ - ምንም አካውንት አያስፈልግም።',
       search_buses: 'አውቶቡሶችን ፈልግ',
       departure: 'መነሻ',
       destination: 'መድረሻ',
