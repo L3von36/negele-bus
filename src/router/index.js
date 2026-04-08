@@ -16,8 +16,8 @@ const routes = [
   { path: '/booking',       name: 'booking',       component: BookingView },
   { path: '/confirmation',  name: 'confirmation',  component: ConfirmationView },
   { path: '/admin-login',   name: 'admin-login',   component: AdminLogin },
-  { path: '/admin',         name: 'admin',         component: AdminDashboard, meta: { requiresAuth: true } },
-  { path: '/driver',        name: 'driver',        component: DriverDashboard },
+  { path: '/admin',         name: 'admin',         component: AdminDashboard, meta: { requiresAuth: true, role: 'admin' } },
+  { path: '/driver',        name: 'driver',        component: DriverDashboard, meta: { requiresAuth: true, role: 'driver' } },
 ]
 
 const router = createRouter({
@@ -27,11 +27,22 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  if (to.meta.requiresAuth && !store.isAuthenticated) {
-    next('/admin-login')
-  } else {
-    next()
+  const requiresAuth = to.meta.requiresAuth
+  const requiredRole = to.meta.role
+  
+  if (requiresAuth && !store.isAuthenticated) {
+    // Redirect to login if not authenticated
+    return next('/admin-login')
   }
+
+  if (requiredRole && store.userProfile?.role !== requiredRole) {
+    // Redirect if role doesn't match
+    if (store.userProfile?.role === 'driver') return next('/driver')
+    if (store.userProfile?.role === 'admin') return next('/admin')
+    return next('/')
+  }
+
+  next()
 })
 
 export default router

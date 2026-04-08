@@ -2,6 +2,8 @@ import { reactive } from 'vue'
 import { supabase } from './lib/supabase'
 
 export const store = reactive({
+  user: null,
+  userProfile: null,
   isAuthenticated: false,
   activeLang: 'en',
   
@@ -205,6 +207,14 @@ export const store = reactive({
 
   // Actions
   async init() {
+    // Check for existing session
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session) {
+      this.user = session.user
+      this.isAuthenticated = true
+      await this.fetchProfile(session.user.id)
+    }
+
     await Promise.all([
       this.fetchRoutes(),
       this.fetchBuses(),
@@ -218,6 +228,39 @@ export const store = reactive({
       .on('postgres_changes', { event: '*', schema: 'public', table: 'routes' }, () => this.fetchRoutes())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'buses' }, () => this.fetchBuses())
       .subscribe()
+
+    // Listen for Auth changes
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session) {
+        this.user = session.user
+        this.isAuthenticated = true
+        await this.fetchProfile(session.user.id)
+      } else {
+        this.user = null
+        this.userProfile = null
+        this.isAuthenticated = false
+      }
+    })
+  },
+
+  async fetchProfile(userId) {
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single()
+    if (data) this.userProfile = data
+    if (error) console.error('Error fetching profile:', error)
+  },
+
+  async signIn(email, password) {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) throw error
+    return data
+  },
+
+  async signOut() {
+    const { error } = await supabase.auth.signOut()
+    if (error) console.error('Error signing out:', error)
+    this.user = null
+    this.userProfile = null
+    this.isAuthenticated = false
   },
 
   async fetchRoutes() {
@@ -304,8 +347,6 @@ export const store = reactive({
     if (error) console.error('Error updating bus status:', error)
   },
 
-  login() { this.isAuthenticated = true },
-  logout() { this.isAuthenticated = false },
   setLanguage(lang) { this.activeLang = lang }
 })
 

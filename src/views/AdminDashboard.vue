@@ -50,13 +50,17 @@
       </nav>
       
       <!-- User / Logout -->
-      <div class="px-4 py-4 border-t border-border">
-        <a href="#" @click="$router.push('/')" class="flex items-center px-3 py-2 text-text-secondary hover:text-white transition-colors text-sm font-medium">
+      <div class="px-4 py-6 border-t border-border">
+        <div class="px-3 mb-4">
+          <p class="text-[10px] font-black text-white/40 uppercase tracking-widest">Logged in as</p>
+          <p class="text-white font-bold text-sm truncate">{{ store.userProfile?.full_name || 'Administrator' }}</p>
+        </div>
+        <button @click="handleSignOut" class="w-full flex items-center px-3 py-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-all text-sm font-bold">
           <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
           Sign out
-        </a>
+        </button>
       </div>
     </aside>
 
@@ -330,5 +334,9 @@ function exportCSV() {
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
+}
+async function handleSignOut() {
+  await store.signOut()
+  router.push('/admin-login')
 }
 </script>

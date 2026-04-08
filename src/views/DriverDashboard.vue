@@ -10,9 +10,15 @@
              </div>
              <h1 class="text-white font-black text-xl tracking-tight">Driver Portal</h1>
           </div>
-          <button @click="$router.push('/')" class="text-white/70 hover:text-white transition-colors">
-            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-          </button>
+          <div class="flex items-center gap-4">
+            <div class="text-right hidden sm:block">
+              <p class="text-[10px] font-black text-white/40 uppercase tracking-widest">Driver</p>
+              <p class="text-white font-bold text-sm">{{ store.userProfile?.full_name || 'Staff' }}</p>
+            </div>
+            <button @click="handleSignOut" class="text-white/70 hover:text-white transition-colors bg-white/10 p-2 rounded-xl hover:bg-white/20 shadow-inner">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+            </button>
+          </div>
         </div>
 
         <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 shadow-xl">
@@ -76,10 +82,17 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { store } from '../store.js'
 import PassengerManifest from '../components/PassengerManifest.vue'
 
+const router = useRouter()
 const currentRoute = ref('')
+
+async function handleSignOut() {
+  await store.signOut()
+  router.push('/admin-login')
+}
 
 function finishTrip() {
   if(confirm('Are you sure you want to complete this trip? All boarding statuses will be archived.')) {
