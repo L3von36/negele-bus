@@ -80,7 +80,7 @@
             v-model="fullName" 
             type="text" 
             :placeholder="t('name_placeholder')"
-            class="w-full px-4 py-3.5 bg-background border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent transition-all"
+            class="w-full px-4 py-3.5 bg-white border border-gray-200 rounded-xl text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent transition-all"
           />
         </div>
         <div>
@@ -89,7 +89,7 @@
             v-model="phone" 
             type="tel" 
             :placeholder="t('phone_placeholder')"
-            class="w-full px-4 py-3.5 bg-background border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent transition-all"
+            class="w-full px-4 py-3.5 bg-white border border-gray-200 rounded-xl text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent transition-all"
           />
         </div>
       </div>
@@ -129,6 +129,10 @@ const date    = computed(() => route.query.date   || 'Tuesday, April 7')
 
 const fullName = ref('')
 const phone    = ref('')
+
+const isFormValid = computed(() => {
+  return fullName.value.trim().length > 0 && phone.value.trim().length > 0
+})
 
 function confirmBooking() {
   if (!fullName.value || !phone.value) return

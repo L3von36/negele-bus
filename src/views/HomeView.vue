@@ -68,7 +68,7 @@
             <div class="flex flex-col sm:flex-row gap-3">
               <div class="flex-1">
                 <label class="block text-xs sm:text-sm font-medium text-text-primary mb-1.5">{{ t('departure') }}</label>
-                <select v-model="fromCity" class="custom-select w-full px-3 sm:px-4 py-3 bg-background border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent transition-all">
+                <select v-model="fromCity" class="custom-select w-full px-3 sm:px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent transition-all">
                   <option value="">{{ t('select_departure') }}</option>
                   <option v-for="(name, id) in store.translations[store.activeLang].cities" :key="id" :value="id">
                     {{ name }}
@@ -85,7 +85,7 @@
               </div>
               <div class="flex-1">
                 <label class="block text-xs sm:text-sm font-medium text-text-primary mb-1.5">{{ t('destination') }}</label>
-                <select v-model="toCity" class="custom-select w-full px-3 sm:px-4 py-3 bg-background border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent transition-all">
+                <select v-model="toCity" class="custom-select w-full px-3 sm:px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent transition-all">
                   <option value="">{{ t('select_destination') }}</option>
                   <option v-for="(name, id) in store.translations[store.activeLang].cities" :key="id" :value="id">
                     {{ name }}
@@ -97,7 +97,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label class="block text-xs sm:text-sm font-medium text-text-primary mb-1.5">{{ t('date') }}</label>
-                <input v-model="travelDate" type="date" class="w-full px-3 sm:px-4 py-3 bg-background border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+                <input v-model="travelDate" type="date" class="w-full px-3 sm:px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent" />
               </div>
               <div class="flex items-end">
                 <button 
@@ -210,6 +210,11 @@ function swap() {
 const search = () => {
   if (!fromCity.value || !toCity.value) {
     alert("Please select both Departure and Destination cities.");
+    return;
+  }
+
+  if (fromCity.value === toCity.value) {
+    alert("Departure and Destination cannot be the same city. Please choose a different route.");
     return;
   }
   

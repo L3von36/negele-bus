@@ -175,13 +175,13 @@ const lastSeat = computed(() => {
 })
 
 function seatClass(n) {
-  if (n === selectedSeat.value)    return 'bg-accent text-white border-accent shadow-sm scale-110 z-10'
-  if (takenSeats.includes(n))      return 'bg-primary-100 text-text-secondary opacity-60 cursor-not-allowed border border-border'
+  if (n === selectedSeat.value)         return 'bg-accent text-white border-accent shadow-sm scale-110 z-10'
+  if (takenSeats.value.includes(n))      return 'bg-primary-100 text-text-secondary opacity-60 cursor-not-allowed border border-border'
   return 'bg-card border border-border text-text-primary hover:border-text-primary hover:shadow-sm'
 }
 
 function selectSeat(n) {
-  if (takenSeats.includes(n)) return
+  if (takenSeats.value.includes(n)) return
   selectedSeat.value = selectedSeat.value === n ? null : n
 }
 
