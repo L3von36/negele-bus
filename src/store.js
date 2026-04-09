@@ -74,7 +74,6 @@ export const store = reactive({
         'yabello': 'Yabello'
       },
       nav: {
-        home: 'Home',
         driver_portal: 'Driver Portal',
         admin_portal: 'Admin Portal',
         navigation: 'Navigation'
@@ -179,7 +178,6 @@ export const store = reactive({
         'yabello': 'ያቤሎ'
       },
       nav: {
-        home: 'ዋና ገጽ',
         driver_portal: 'የአሽከርካሪዎች ክፍል',
         admin_portal: 'የአስተዳዳሪ ክፍል',
         navigation: 'ዳሰሳ'
@@ -284,7 +282,6 @@ export const store = reactive({
         'yabello': 'Yaabeelloo'
       },
       nav: {
-        home: 'Mana',
         driver_portal: 'Bakka Konkolaachisaa',
         admin_portal: 'Bakka Bulchiinsaa',
         navigation: 'Navigeshinii'

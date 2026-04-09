@@ -17,7 +17,7 @@
     >
       <!-- Logo area -->
       <div class="h-16 flex items-center justify-between px-6 border-b border-border">
-        <div class="flex items-center space-x-3 cursor-pointer" @click="$router.push('/')">
+        <div class="flex items-center space-x-3">
           <img src="/favicon.png" alt="Logo" class="rounded-lg w-8 h-8 flex-shrink-0 object-cover border border-white/10" />
           <span class="font-bold tracking-tight text-white">Admin Portal</span>
         </div>

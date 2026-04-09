@@ -20,8 +20,7 @@
         </button>
 
         <div 
-          class="flex items-center space-x-2 sm:space-x-3 cursor-pointer min-w-0" 
-          @click="$router.push('/')"
+          class="flex items-center space-x-2 sm:space-x-3 min-w-0" 
         >
           <img src="/favicon.png" alt="Logo" class="rounded-lg w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 object-cover border border-white/10 shadow-lg" />
           <div class="flex flex-col min-w-0 overflow-hidden">
