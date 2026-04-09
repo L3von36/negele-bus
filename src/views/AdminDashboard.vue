@@ -46,11 +46,17 @@
           <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
           Routes
         </button>
-        <button 
+        <button
           @click="currentTab = 'Buses'; isSidebarOpen = false"
           :class="['w-full flex items-center px-3 py-2.5 rounded-lg font-medium text-sm transition-colors', currentTab === 'Buses' ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:text-text-primary hover:bg-black/5']">
-          <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+          <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
           Buses
+        </button>
+        <button
+          @click="currentTab = 'Drivers'; isSidebarOpen = false"
+          :class="['w-full flex items-center px-3 py-2.5 rounded-lg font-medium text-sm transition-colors', currentTab === 'Drivers' ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:text-text-primary hover:bg-black/5']">
+          <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+          Drivers
         </button>
         <button 
           @click="currentTab = 'Reports'; isSidebarOpen = false"
@@ -155,12 +161,21 @@
           <div class="px-6 py-5 border-b border-border flex flex-col sm:flex-row justify-between sm:items-center gap-4">
             <h3 class="text-lg font-bold text-text-primary">All Bookings</h3>
             <div class="flex flex-col sm:flex-row items-center gap-3">
-              <input 
-                v-model="bookingSearch" 
-                type="text" 
-                placeholder="Search name or ID..." 
+              <input
+                v-model="bookingSearch"
+                type="text"
+                placeholder="Search name or ID..."
                 class="px-3 py-2 border border-border rounded-lg text-sm bg-background focus:outline-none focus:border-accent w-full sm:w-48"
               />
+              <select
+                v-model="bookingStatusFilter"
+                class="px-3 py-2 border border-border rounded-lg text-sm bg-background focus:outline-none focus:border-accent w-full sm:w-36"
+              >
+                <option value="">All Statuses</option>
+                <option value="Confirmed">Confirmed</option>
+                <option value="Completed">Completed</option>
+                <option value="Canceled">Canceled</option>
+              </select>
               <div class="w-full sm:w-48">
                 <DatePickerEthiopian v-model="bookingDateFilter" placeholder="Filter by Date" />
               </div>
@@ -177,13 +192,16 @@
                   <th class="px-6 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider border-b border-border">ID</th>
                   <th class="px-6 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider border-b border-border">Passenger</th>
                   <th class="px-6 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider border-b border-border">Route</th>
-                  <th class="px-6 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider border-b border-border">Stauts</th>
+                  <th class="px-6 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider border-b border-border">Status</th>
                   <th class="px-6 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider border-b border-border text-right">Actions</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-border bg-card">
-                <tr v-for="booking in filteredBookings" :key="booking.id" class="hover:bg-primary-100/30 transition-colors">
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-text-primary">#{{ booking.id }}</td>
+                <tr v-if="paginatedBookings.length === 0">
+                  <td colspan="5" class="px-6 py-12 text-center text-sm text-text-secondary">No bookings found.</td>
+                </tr>
+                <tr v-for="booking in paginatedBookings" :key="booking.id" class="hover:bg-primary-100/30 transition-colors">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-text-primary">#{{ booking.id.slice(0, 8) }}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
                     {{ booking.name }}<br>
                     <span class="text-xs">{{ formatEthiopian(new Date(booking.date), store, t) }}</span>
@@ -195,12 +213,23 @@
                     <span v-else class="px-2.5 py-1 inline-flex text-[10px] leading-4 font-bold rounded-full bg-red-100 text-red-800 uppercase tracking-wider">Canceled</span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
-                    <button v-if="booking.status !== 'Canceled'" @click="store.cancelBooking(booking.id)" class="text-red-500 hover:text-red-700 font-medium ml-3">Cancel</button>
+                    <button v-if="booking.status !== 'Canceled'" @click="showConfirm('Cancel this booking?', () => store.cancelBooking(booking.id))" class="text-red-500 hover:text-red-700 font-medium ml-3">Cancel</button>
                     <button v-if="booking.status === 'Canceled'" @click="store.confirmBooking(booking.id)" class="text-green-500 hover:text-green-700 font-medium ml-3">Confirm</button>
                   </td>
                 </tr>
               </tbody>
             </table>
+          </div>
+          <!-- Pagination -->
+          <div v-if="totalBookingPages > 1" class="flex items-center justify-between px-6 py-4 border-t border-border">
+            <p class="text-xs text-text-secondary">
+              Showing {{ (currentPage - 1) * pageSize + 1 }}–{{ Math.min(currentPage * pageSize, filteredBookings.length) }} of {{ filteredBookings.length }}
+            </p>
+            <div class="flex items-center gap-2">
+              <button @click="currentPage--" :disabled="currentPage === 1" class="px-3 py-1.5 text-xs font-medium border border-border rounded-lg disabled:opacity-40 hover:bg-primary-100 transition-colors">Prev</button>
+              <span class="text-xs text-text-secondary">{{ currentPage }} / {{ totalBookingPages }}</span>
+              <button @click="currentPage++" :disabled="currentPage === totalBookingPages" class="px-3 py-1.5 text-xs font-medium border border-border rounded-lg disabled:opacity-40 hover:bg-primary-100 transition-colors">Next</button>
+            </div>
           </div>
         </div>
 
@@ -221,7 +250,10 @@
                 <input v-model="newRoute.price" type="number" placeholder="Price (ETB)" class="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:border-accent" required />
               </div>
               <div>
-                <button type="submit" class="w-full bg-black text-white hover:bg-accent transition-colors py-2 rounded-lg text-sm font-medium">Add Route</button>
+                <button type="submit" :disabled="isAddingRoute" class="w-full bg-black text-white hover:bg-accent disabled:opacity-50 transition-colors py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2">
+                  <svg v-if="isAddingRoute" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                  {{ isAddingRoute ? 'Adding…' : 'Add Route' }}
+                </button>
               </div>
             </form>
           </div>
@@ -255,6 +287,7 @@
                         <button @click="openSeatMap(route.id)" class="text-blue-500 hover:text-blue-700 font-medium">Seats</button>
                         <button @click="openEditRoute(route)" class="text-orange-500 hover:text-orange-700 font-medium">Edit</button>
                         <button @click="store.toggleRouteStatus(route.id)" class="text-text-secondary hover:text-black font-medium">Toggle</button>
+                        <button @click="showConfirm(`Delete route ${route.from} → ${route.to}? This cannot be undone.`, () => store.deleteRoute(route.id))" class="text-red-500 hover:text-red-700 font-medium">Delete</button>
                       </div>
                     </td>
                   </tr>
@@ -276,7 +309,10 @@
                 <input v-model="newBus.capacity" type="number" placeholder="Capacity" class="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:border-accent" required />
               </div>
               <div>
-                <button type="submit" class="w-full bg-black text-white hover:bg-accent transition-colors py-2 rounded-lg text-sm font-medium">Add Bus</button>
+                <button type="submit" :disabled="isAddingBus" class="w-full bg-black text-white hover:bg-accent disabled:opacity-50 transition-colors py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2">
+                  <svg v-if="isAddingBus" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                  {{ isAddingBus ? 'Adding…' : 'Add Bus' }}
+                </button>
               </div>
             </form>
           </div>
@@ -332,12 +368,49 @@
                       ]">{{ bus.status || 'Active' }}</span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
-                      <button @click="store.updateBusStatus(bus.id, bus.status === 'Active' ? 'Maintenance' : 'Active')" class="text-accent hover:text-orange-700 font-medium">Toggle Status</button>
+                      <div class="flex items-center justify-end gap-3">
+                        <button @click="store.updateBusStatus(bus.id, bus.status === 'Active' ? 'Maintenance' : 'Active')" class="text-accent hover:text-orange-700 font-medium">Toggle</button>
+                        <button @click="showConfirm(`Remove bus ${bus.plate} from fleet? This cannot be undone.`, () => store.deleteBus(bus.id))" class="text-red-500 hover:text-red-700 font-medium">Delete</button>
+                      </div>
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+
+        <!-- =================== DRIVERS TAB =================== -->
+        <div v-if="currentTab === 'Drivers'" class="animate-fade-in bg-card rounded-xl border border-border shadow-soft overflow-hidden">
+          <div class="px-6 py-5 border-b border-border flex items-center justify-between">
+            <h3 class="text-lg font-bold text-text-primary">Driver Roster</h3>
+            <span class="text-sm text-text-secondary">{{ store.drivers.length }} driver{{ store.drivers.length !== 1 ? 's' : '' }}</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse min-w-[600px]">
+              <thead>
+                <tr class="bg-primary-100/50">
+                  <th class="px-6 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider border-b border-border">Name</th>
+                  <th class="px-6 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider border-b border-border">Email</th>
+                  <th class="px-6 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider border-b border-border">Assigned Bus</th>
+                  <th class="px-6 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider border-b border-border">Phone</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-border bg-card">
+                <tr v-if="store.drivers.length === 0">
+                  <td colspan="4" class="px-6 py-12 text-center text-sm text-text-secondary">No drivers found.</td>
+                </tr>
+                <tr v-for="driver in store.drivers" :key="driver.id" class="hover:bg-primary-100/30 transition-colors">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-text-primary">{{ driver.full_name || '—' }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">{{ driver.email || '—' }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
+                    <span v-if="driverBus(driver.id)" class="font-medium text-text-primary">{{ driverBus(driver.id).plate }}</span>
+                    <span v-else class="text-text-secondary/50 italic">Unassigned</span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">{{ driver.phone || '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -358,11 +431,22 @@
     <SeatMapModal :is-open="isSeatMapOpen" :route-id="activeRouteId" @close="isSeatMapOpen = false" />
     <EditRouteModal :is-open="isEditRouteOpen" :route-data="activeRouteData" @close="isEditRouteOpen = false" />
 
+    <!-- Confirmation Modal -->
+    <div v-if="confirmModal.show" class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <p class="text-text-primary font-semibold text-base mb-6">{{ confirmModal.message }}</p>
+        <div class="flex justify-end gap-3">
+          <button @click="confirmModal.show = false" class="px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-primary-100 transition-colors">Cancel</button>
+          <button @click="doConfirm" class="px-4 py-2 text-sm font-bold bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">Confirm</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { store } from '../store.js'
 import AdminCharts from '../components/AdminCharts.vue'
@@ -377,62 +461,64 @@ const router = useRouter()
 const isSidebarOpen = ref(false)
 const currentTab = ref('Overview')
 
-const newRoute = reactive({
-  from: '',
-  to: '',
-  price: null,
-  distance: '---',
-  duration: '---',
-  active: true
-})
+// ── Route Management ──────────────────────────────────────────────
+const newRoute = reactive({ from: '', to: '', price: null, distance: '---', duration: '---', active: true })
+const isAddingRoute = ref(false)
 
-function handleNewRoute() {
-  if(newRoute.from && newRoute.to && newRoute.price) {
-    store.addRoute({...newRoute})
+async function handleNewRoute() {
+  if (newRoute.from && newRoute.to && newRoute.price) {
+    isAddingRoute.value = true
+    await store.addRoute({ ...newRoute })
     newRoute.from = ''
     newRoute.to = ''
     newRoute.price = null
+    isAddingRoute.value = false
   }
 }
 
-// Modals State
+// ── Modals ────────────────────────────────────────────────────────
 const isSeatMapOpen = ref(false)
 const activeRouteId = ref('')
 const isEditRouteOpen = ref(false)
 const activeRouteData = ref(null)
 
-function openSeatMap(rId) {
-  activeRouteId.value = rId
-  isSeatMapOpen.value = true
-}
+function openSeatMap(rId) { activeRouteId.value = rId; isSeatMapOpen.value = true }
+function openEditRoute(rData) { activeRouteData.value = rData; isEditRouteOpen.value = true }
 
-function openEditRoute(rData) {
-  activeRouteData.value = rData
-  isEditRouteOpen.value = true
-}
-
-// Bus Management
+// ── Bus Management ────────────────────────────────────────────────
 const newBus = reactive({ plate: '', capacity: null })
-function handleNewBus() {
-  if(newBus.plate && newBus.capacity) {
-    store.addBus({...newBus})
+const isAddingBus = ref(false)
+
+async function handleNewBus() {
+  if (newBus.plate && newBus.capacity) {
+    isAddingBus.value = true
+    await store.addBus({ ...newBus })
     newBus.plate = ''
     newBus.capacity = null
+    isAddingBus.value = false
   }
 }
 
-// Booking Search & Filter
+// ── Drivers ───────────────────────────────────────────────────────
+function driverBus(driverId) {
+  return store.buses.find(b => b.driver_id === driverId) || null
+}
+
+// ── Booking Search, Filter & Pagination ──────────────────────────
 const bookingSearch = ref('')
 const bookingDateFilter = ref('')
+const bookingStatusFilter = ref('')
+const currentPage = ref(1)
+const pageSize = 20
+
 const filteredBookings = computed(() => {
   let list = store.bookings
-  if (bookingDateFilter.value) {
-    list = list.filter(b => b.date && b.date.includes(bookingDateFilter.value))
-  }
+  if (bookingStatusFilter.value) list = list.filter(b => b.status === bookingStatusFilter.value)
+  if (bookingDateFilter.value) list = list.filter(b => b.date && b.date.includes(bookingDateFilter.value))
   if (bookingSearch.value) {
     const query = bookingSearch.value.toLowerCase()
-    list = list.filter(b => 
-      b.name.toLowerCase().includes(query) || 
+    list = list.filter(b =>
+      b.name.toLowerCase().includes(query) ||
       b.id.toLowerCase().includes(query) ||
       b.route.toLowerCase().includes(query)
     )
@@ -440,26 +526,46 @@ const filteredBookings = computed(() => {
   return list
 })
 
-// Export CSV
+const totalBookingPages = computed(() => Math.max(1, Math.ceil(filteredBookings.value.length / pageSize)))
+const paginatedBookings = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  return filteredBookings.value.slice(start, start + pageSize)
+})
+
+watch([bookingSearch, bookingDateFilter, bookingStatusFilter], () => { currentPage.value = 1 })
+
+// ── Confirmation Modal ────────────────────────────────────────────
+const confirmModal = reactive({ show: false, message: '', onConfirm: null })
+
+function showConfirm(message, action) {
+  confirmModal.message = message
+  confirmModal.onConfirm = action
+  confirmModal.show = true
+}
+
+function doConfirm() {
+  confirmModal.onConfirm?.()
+  confirmModal.show = false
+}
+
+// ── CSV Export ────────────────────────────────────────────────────
 function exportCSV() {
   const headers = ['ID', 'Passenger Name', 'Route', 'Date', 'Amount', 'Status']
   const rows = filteredBookings.value.map(b => [b.id, b.name, b.route, formatEthiopian(new Date(b.date), store, t), b.amount, b.status])
-  
-  const csvContent = "data:text/csv;charset=utf-8," 
-    + [headers.join(","), ...rows.map(e => e.join(","))].join("\n")
-    
+  const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n')
   const et = currentEthiopian()
   const dateStr = `${et.year}-${String(et.month).padStart(2, '0')}-${String(et.day).padStart(2, '0')}`
-  const encodedUri = encodeURI(csvContent)
-  const link = document.createElement("a")
-  link.setAttribute("href", encodedUri)
-  link.setAttribute("download", `bookings_export_${dateStr}.csv`)
+  const link = document.createElement('a')
+  link.setAttribute('href', encodeURI(csvContent))
+  link.setAttribute('download', `bookings_export_${dateStr}.csv`)
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
 }
+
+// ── Auth ──────────────────────────────────────────────────────────
 async function handleSignOut() {
   await store.signOut()
-  router.push('/admin-login')
+  router.push('/login')
 }
 </script>
