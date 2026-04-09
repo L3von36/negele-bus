@@ -31,10 +31,6 @@
         </div>
       </div>
 
-      <!-- Center: Desktop Nav Links -->
-      <nav class="hidden md:flex items-center space-x-8">
-        <router-link to="/" class="text-sm font-medium text-white/70 hover:text-white transition-colors">{{ t('nav.home') }}</router-link>
-      </nav>
 
       <!-- Right: Language Switcher Dropdown & Mobile Menu Button -->
       <div class="flex items-center space-x-2">
@@ -83,17 +79,21 @@
       >
         <div class="space-y-4">
           <p class="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-4">{{ t('nav.navigation') }}</p>
-          <router-link 
-            v-for="link in navLinks" 
-            :key="link.path" 
-            :to="link.path"
+          <router-link
+            to="/driver"
             @click="isMenuOpen = false"
             class="block text-xl font-bold text-white hover:text-accent transition-colors flex items-center justify-between"
           >
-            {{ link.name }}
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
+            {{ t('nav.driver_portal') }}
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+          </router-link>
+          <router-link
+            to="/admin-login"
+            @click="isMenuOpen = false"
+            class="block text-xl font-bold text-white hover:text-accent transition-colors flex items-center justify-between"
+          >
+            {{ t('nav.admin_portal') }}
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
           </router-link>
         </div>
       </div>
@@ -102,7 +102,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { store, t } from '../store.js'
 
 const props = defineProps({
@@ -112,10 +112,6 @@ const props = defineProps({
 
 const isMenuOpen = ref(false)
 const isScrolled = ref(false)
-
-const navLinks = computed(() => [
-  { name: t('nav.home'), path: '/' }
-])
 
 const handleScroll = () => {
   isScrolled.value = window.scrollY > 20
