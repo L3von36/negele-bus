@@ -18,11 +18,7 @@
       <!-- Logo area -->
       <div class="h-16 flex items-center justify-between px-6 border-b border-border">
         <div class="flex items-center space-x-3 cursor-pointer" @click="$router.push('/')">
-          <div class="bg-accent rounded-lg w-8 h-8 flex items-center justify-center flex-shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16l-4-4m8 0l-4 4m0-4V8a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h10a2 2 0 002-2z" />
-            </svg>
-          </div>
+          <img src="/favicon.png" alt="Logo" class="rounded-lg w-8 h-8 flex-shrink-0 object-cover border border-white/10" />
           <span class="font-bold tracking-tight text-white">Admin Portal</span>
         </div>
         <button @click="isSidebarOpen = false" class="md:hidden text-white/60 hover:text-white">

@@ -5,11 +5,7 @@
     <header class="bg-primary border-b border-border">
       <div class="flex justify-between items-center px-4 sm:px-6 py-4 max-w-7xl mx-auto">
         <div class="flex items-center space-x-3 cursor-pointer" @click="$router.push('/')">
-          <div class="bg-accent rounded-lg w-9 h-9 flex items-center justify-center flex-shrink-0 text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 17l4-4m0 0l4-4m-4 4V3m0 14a9 9 0 110-18 9 9 0 010 18z" />
-            </svg>
-          </div>
+          <img src="/favicon.png" alt="Logo" class="rounded-lg w-9 h-9 flex-shrink-0 object-cover border border-border" />
           <div>
             <p class="text-sm font-bold text-text-primary leading-tight">Negele Borena</p>
             <p class="text-xs text-text-secondary">{{ t('brand_subtitle') }}</p>

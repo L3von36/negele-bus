@@ -5,9 +5,7 @@
       <div class="relative z-10 max-w-2xl mx-auto">
         <div class="flex items-center justify-between mb-8">
           <div class="flex items-center gap-3">
-             <div class="bg-accent rounded-lg p-2 shadow-lg shadow-accent/20">
-                 <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-             </div>
+             <img src="/favicon.png" alt="Logo" class="rounded-lg w-10 h-10 flex-shrink-0 object-cover border border-white/10 shadow-lg shadow-accent/20" />
              <div>
                 <h1 class="text-white font-black text-lg sm:text-xl tracking-tight leading-none">Driver Portal</h1>
                 <p class="text-white/40 text-[10px] uppercase font-bold tracking-widest mt-1">Personnel Access</p>
