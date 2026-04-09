@@ -57,14 +57,39 @@
               <!-- Screen Content -->
               <transition name="screen" mode="out-in">
 
+                <!-- ====== SCREEN 0: Language Selection ====== -->
+                <div v-if="activeStep === 0" key="s-lang" class="absolute inset-0 bg-[#0F172A] flex flex-col items-center justify-center p-6 text-center">
+                   <div class="mb-6 animate-pulse">
+                     <div class="w-20 h-20 rounded-full bg-accent/20 flex items-center justify-center border-2 border-accent/40">
+                       <span class="text-4xl text-accent">🌍</span>
+                     </div>
+                   </div>
+                   <h4 class="text-white font-black text-lg mb-2">{{ t('onboarding.step0_label') }}</h4>
+                   <p class="text-white/40 text-[10px] leading-relaxed mb-8">{{ t('onboarding.step0_full') }}</p>
+                   
+                   <div class="w-full space-y-3">
+                     <div v-for="l in ['English', 'አማርኛ', 'Afaan Oromo']" :key="l" 
+                       :class="['w-full py-3 rounded-2xl border font-bold text-xs transition-all duration-500 flex items-center justify-center gap-3', highlightEl === l ? 'bg-accent border-accent text-white shadow-lg scale-105' : 'bg-white/5 border-white/10 text-white/40']">
+                       {{ l }}
+                       <div v-if="highlightEl === l" class="w-2 h-2 rounded-full bg-white animate-ping"></div>
+                     </div>
+                   </div>
+
+                   <!-- Mock Language Switcher in Header -->
+                   <div :class="['absolute top-8 right-4 px-3 py-1.5 rounded-xl border transition-all duration-500 flex items-center gap-2', highlightEl === 'dropdown' ? 'bg-accent border-accent text-white scale-110 shadow-lg' : 'bg-white/5 border-white/10 text-white/40']">
+                     <span class="text-[8px] font-black uppercase tracking-widest">{{ store.activeLang }}</span>
+                     <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                   </div>
+                </div>
+
                 <!-- ====== SCREEN 1: Home Search ====== -->
-                <div v-if="activeStep === 0" key="s0" class="absolute inset-0 bg-background overflow-hidden">
+                <div v-else-if="activeStep === 1" key="s0" class="absolute inset-0 bg-background overflow-hidden">
                   <!-- Mini header -->
                   <div class="bg-[#0F172A] px-4 pt-8 pb-5" style="background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.06) 1px, transparent 0); background-size: 16px 16px;">
                     <div class="flex items-center gap-2 mb-3">
                       <div class="w-5 h-5 rounded-md bg-accent/20 flex-shrink-0"></div>
-                      <span class="text-white font-black text-[9px] tracking-tight">Negele Borena</span>
-                      <div class="ml-auto bg-white/5 rounded-md px-1.5 py-0.5 text-white/40 text-[6px] font-black uppercase tracking-wider border border-white/10">EN</div>
+                      <span class="text-white font-black text-[9px] tracking-tight">{{ t('brand_name') }}</span>
+                      <div class="ml-auto bg-white/5 rounded-md px-1.5 py-0.5 text-white/40 text-[6px] font-black uppercase tracking-wider border border-white/10">{{ store.activeLang.toUpperCase() }}</div>
                     </div>
                     <p class="text-white font-black text-[11px] leading-tight">{{ t('travel') }} <span class="text-accent underline">{{ t('confidence') }}</span></p>
                     <p class="text-white/50 text-[7px] mt-0.5">{{ t('subtext') }}</p>
@@ -75,7 +100,7 @@
                     <!-- From -->
                     <div :class="['rounded-xl p-2.5 border mb-1.5 transition-all duration-500', highlightEl === 'from' ? 'border-orange-400 bg-orange-50 shadow-md shadow-orange-100' : 'border-gray-200 bg-gray-50']">
                       <p class="text-[6px] font-black text-gray-400 uppercase tracking-widest">{{ t('departure') }}</p>
-                      <p class="text-[9px] font-bold text-gray-800 mt-0.5">Negele Borena</p>
+                      <p class="text-[9px] font-bold text-gray-800 mt-0.5">{{ t('cities.negele-borena') }}</p>
                     </div>
                     <!-- Swap -->
                     <div class="flex justify-center my-1">
@@ -84,7 +109,7 @@
                     <!-- To -->
                     <div :class="['rounded-xl p-2.5 border mb-1.5 transition-all duration-500', highlightEl === 'to' ? 'border-orange-400 bg-orange-50 shadow-md shadow-orange-100' : 'border-gray-200 bg-gray-50']">
                       <p class="text-[6px] font-black text-gray-400 uppercase tracking-widest">{{ t('destination') }}</p>
-                      <p class="text-[9px] font-bold text-gray-800 mt-0.5">Addis Ababa</p>
+                      <p class="text-[9px] font-bold text-gray-800 mt-0.5">{{ t('cities.addis-ababa') }}</p>
                     </div>
                     <!-- Date -->
                     <div :class="['rounded-xl p-2.5 border mb-2 transition-all duration-500', highlightEl === 'date' ? 'border-orange-400 bg-orange-50 shadow-md shadow-orange-100' : 'border-gray-200 bg-gray-50']">
@@ -101,7 +126,7 @@
                   <div class="px-3 mt-3">
                     <p class="text-[7px] font-black text-gray-500 uppercase tracking-widest mb-1.5">{{ t('popular_routes') }}</p>
                     <div class="space-y-1">
-                      <div v-for="r in ['Negele → Hawassa', 'Negele → Moyale']" :key="r" class="bg-white rounded-lg border border-gray-100 px-2.5 py-1.5 flex items-center justify-between">
+                      <div v-for="r in [`${t('cities.negele-borena')} → ${t('cities.hawassa')}`, `${t('cities.negele-borena')} → ${t('cities.moyale')}`]" :key="r" class="bg-white rounded-lg border border-gray-100 px-2.5 py-1.5 flex items-center justify-between">
                         <span class="text-[7px] font-bold text-gray-700">{{ r }}</span>
                         <svg class="w-2.5 h-2.5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                       </div>
@@ -110,7 +135,7 @@
                 </div>
 
                 <!-- ====== SCREEN 2: Bus Results + Seat Selector ====== -->
-                <div v-else-if="activeStep === 1" key="s1" class="absolute inset-0 bg-background overflow-hidden">
+                <div v-else-if="activeStep === 2" key="s1" class="absolute inset-0 bg-background overflow-hidden">
                   <!-- Header -->
                   <div class="bg-[#0F172A] px-3 pt-8 pb-3 flex items-center gap-2">
                     <div class="w-5 h-5 rounded-lg bg-white/10 flex items-center justify-center">
@@ -151,7 +176,7 @@
                 </div>
 
                 <!-- ====== SCREEN 3: Seat Map ====== -->
-                <div v-else-if="activeStep === 2" key="s2" class="absolute inset-0 bg-background overflow-hidden">
+                <div v-else-if="activeStep === 3" key="s2" class="absolute inset-0 bg-background overflow-hidden">
                   <!-- Header -->
                   <div class="bg-[#0F172A] px-3 pt-8 pb-3 flex items-center gap-2">
                     <div class="w-5 h-5 rounded-lg bg-white/10 flex items-center justify-center">
@@ -201,7 +226,7 @@
                 </div>
 
                 <!-- ====== SCREEN 4: Boarding Pass + QR ====== -->
-                <div v-else-if="activeStep === 3" key="s3" class="absolute inset-0 bg-background overflow-hidden">
+                <div v-else-if="activeStep === 4" key="s3" class="absolute inset-0 bg-background overflow-hidden">
                   <!-- Header -->
                   <div class="bg-[#0F172A] px-3 pt-8 pb-3 flex items-center gap-2">
                     <div class="w-5 h-5 rounded-lg bg-white/10 flex items-center justify-center">
@@ -341,9 +366,16 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { t } from '../store.js'
+import { store, t } from '../store.js'
 
 const steps = computed(() => [
+  {
+    label: t('onboarding.step0_label'),
+    icon: '🌍',
+    desc: t('onboarding.step0_desc'),
+    full: t('onboarding.step0_full'),
+    tips: [t('onboarding.step0_tip1'), t('onboarding.step0_tip2'), t('onboarding.step0_tip3')]
+  },
   {
     label: t('onboarding.step1_label'),
     icon: '🔍',
@@ -380,10 +412,10 @@ const bottomTips = computed(() => [
   { icon: '🔒', title: t('onboarding.bottom_tip3_title'), desc: t('onboarding.bottom_tip3_desc') },
 ])
 
-const mockBuses = [
-  { name: 'Negele Express', seats: '44', price: '250', depart: '06:00', arrive: '10:30' },
-  { name: 'Sky Bus', seats: '32', price: '320', depart: '08:30', arrive: '13:00' },
-]
+const mockBuses = computed(() => [
+  { name: `${t('brand_name')} Express`, seats: '44', price: '250', depart: '06:00', arrive: '10:30' },
+  { name: `Sky ${t('bus')}`, seats: '32', price: '320', depart: '08:30', arrive: '13:00' },
+])
 
 const seatLegend = computed(() => [
   { label: t('open'), cls: 'bg-white border-gray-300' },
@@ -413,7 +445,7 @@ const ticketDetails = computed(() => [
   { label: t('passenger'), val: 'Abebe Girma' },
   { label: t('phone'), val: '0912 345 678' },
   { label: t('seat'), val: '#5' },
-  { label: t('bus'), val: 'Negele Express' },
+  { label: t('bus'), val: `${t('brand_name')} Express` },
 ])
 
 // State
@@ -452,6 +484,26 @@ function tap(top, left) {
   setTimeout(() => showTap.value = false, 900)
 }
 
+function runStepLang() {
+  mascotEmoji.value = '🌍'
+  mascotPos.value = 'bottom-2 -right-10 sm:-right-14'
+  mascotRight.value = true
+  mascotSpeech.value = t('onboarding.mascot_lang')
+  mascotBounce.value = true
+  selectedSeat.value = null
+  showQR.value = false
+
+  let seq = 0
+  clearTimer()
+  timer = setInterval(() => {
+    seq = (seq + 1) % 4
+    if (seq === 0) { highlightEl.value = 'dropdown'; mascotSpeech.value = t('onboarding.step0_tip1'); tap('10%', '85%') }
+    if (seq === 1) { highlightEl.value = 'English'; mascotSpeech.value = 'English 🇬🇧'; tap('45%', '50%') }
+    if (seq === 2) { highlightEl.value = 'አማርኛ'; mascotSpeech.value = 'አማርኛ 🇪🇹'; tap('55%', '50%') }
+    if (seq === 3) { highlightEl.value = 'Afaan Oromo'; mascotSpeech.value = 'Afaan Oromo 🇪🇹'; tap('65%', '50%') }
+  }, 2000)
+}
+
 function runStep0() {
   mascotEmoji.value = '🧑‍✈️'
   mascotPos.value = 'bottom-2 -right-10 sm:-right-14'
@@ -486,8 +538,8 @@ function runStep1() {
   timer = setInterval(() => {
     seq = (seq + 1) % 2
     highlightEl.value = 'bus' + seq
-    if (seq === 0) { mascotSpeech.value = 'Negele Express — great price! 👍'; tap('55%', '50%') }
-    if (seq === 1) { mascotSpeech.value = 'Sky Bus is VIP comfort ✨'; tap('78%', '50%') }
+    if (seq === 0) { mascotSpeech.value = t('bus') + ' 1 — ' + t('available') + '! 👍'; tap('55%', '50%') }
+    if (seq === 1) { mascotSpeech.value = t('bus') + ' 2 — ' + t('confirmed') + ' ✨'; tap('78%', '50%') }
   }, 2200)
 }
 
@@ -547,10 +599,11 @@ function goToStep(i) {
   showTap.value = false
   highlightEl.value = ''
   activeStep.value = i
-  if (i === 0) runStep0()
-  else if (i === 1) runStep1()
-  else if (i === 2) runStep2()
-  else if (i === 3) runStep3()
+  if (i === 0) runStepLang()
+  else if (i === 1) runStep0()
+  else if (i === 2) runStep1()
+  else if (i === 3) runStep2()
+  else if (i === 4) runStep3()
 }
 
 function startAuto() {
@@ -559,11 +612,6 @@ function startAuto() {
   }, 10000)
 }
 
-const bottomTips = [
-  { icon: '📸', title: 'Screenshot your QR', desc: 'Take a screenshot so it works even when you\'re offline at the station.' },
-  { icon: '💾', title: 'Save to gallery', desc: 'Tap "Save QR" on the confirmation page to download it directly.' },
-  { icon: '🔒', title: 'One ticket, one seat', desc: 'Your QR is unique to your booking. Don\'t share it — it\'s your ticket.' },
-]
 
 onMounted(() => { goToStep(0); startAuto() })
 onUnmounted(() => { clearTimer(); if (autoTimer) clearInterval(autoTimer) })
