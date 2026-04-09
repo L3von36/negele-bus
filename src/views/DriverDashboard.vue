@@ -338,7 +338,8 @@
     <!-- Scanner Modal -->
     <QRScannerModal
       :is-open="isScannerOpen"
-      @close="isScannerOpen = false"
+      :scan-result="scanResult"
+      @close="isScannerOpen = false; scanResult = null"
       @scanned="onTicketScanned"
     />
 
@@ -355,6 +356,7 @@ import { formatEthiopian } from '../lib/ethiopianCalendar.js'
 
 const router = useRouter()
 const isScannerOpen = ref(false)
+const scanResult = ref(null)
 const isChatOpen = ref(false)
 const isDepartConfirmOpen = ref(false)
 const sosCountdown = ref(0)
@@ -453,28 +455,40 @@ function onTicketScanned(rawId) {
   const booking = store.bookings.find(b => b.id === rawId)
 
   if (!booking) {
-    showToast('Invalid ticket — not found in system', 'error')
+    const msg = 'Ticket not found in system'
+    scanResult.value = { type: 'error', message: msg }
+    showToast(msg, 'error')
     return
   }
   if (booking.status === 'Canceled' || booking.status === 'Cancelled') {
-    showToast('This booking has been cancelled', 'error')
+    const msg = 'This booking has been cancelled'
+    scanResult.value = { type: 'error', message: msg }
+    showToast(msg, 'error')
     return
   }
   if (booking.status !== 'Confirmed') {
-    showToast('Booking is not confirmed', 'error')
+    const msg = 'Booking is not confirmed'
+    scanResult.value = { type: 'error', message: msg }
+    showToast(msg, 'error')
     return
   }
   if (assignedRouteText.value && booking.route !== assignedRouteText.value) {
-    showToast(`Wrong route — ticket is for: ${booking.route}`, 'warning')
+    const msg = `Wrong route — ticket is for: ${booking.route}`
+    scanResult.value = { type: 'warning', message: msg }
+    showToast(msg, 'warning')
     return
   }
   if (booking.boarded) {
-    showToast(`${booking.name} is already boarded (Seat ${booking.seat_number || '?'})`, 'warning')
+    const msg = `${booking.name} — already boarded (Seat ${booking.seat_number || '?'})`
+    scanResult.value = { type: 'warning', message: msg }
+    showToast(msg, 'warning')
     return
   }
 
   store.toggleBoarding(rawId)
-  showToast(`Boarded: ${booking.name} — Seat ${booking.seat_number || '?'}`, 'success')
+  const msg = `${booking.name} — Seat ${booking.seat_number || '?'}`
+  scanResult.value = { type: 'success', message: msg }
+  showToast(`Boarded: ${msg}`, 'success')
 }
 
 function startTrip() {
