@@ -76,8 +76,12 @@
         </div>
 
         <!-- Footer note -->
-        <div class="bg-primary-100 px-5 sm:px-6 py-3 border-t border-border">
-          <p class="text-xs text-text-secondary font-medium text-center">
+        <div class="bg-primary-100 px-5 sm:px-6 py-5 border-t border-border flex flex-col items-center">
+          <div class="bg-white p-3 rounded-2xl shadow-inner mb-4 border border-border">
+            <QrcodeVue :value="bookingId" :size="120" level="H" />
+          </div>
+          <p class="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em] mb-3">Scan to Board</p>
+          <p class="text-xs text-text-secondary font-medium text-center max-w-[200px] leading-relaxed">
             {{ t('station_note').replace('{phone}', phone) }}
           </p>
         </div>
@@ -101,6 +105,7 @@ import { useRoute } from 'vue-router'
 import { store, t } from '../store.js'
 import MainHeader from '../components/MainHeader.vue'
 import AppButton from '../components/AppButton.vue'
+import QrcodeVue from 'qrcode.vue'
 
 const route = useRoute()
 

@@ -10,6 +10,7 @@ export const store = reactive({
   bookings: [],
   routes: [],
   buses: [],
+  drivers: [],
   driverBus: null,
 
   translations: {
@@ -238,7 +239,8 @@ export const store = reactive({
     await Promise.all([
       this.fetchRoutes(),
       this.fetchBuses(),
-      this.fetchBookings()
+      this.fetchBookings(),
+      this.fetchDrivers()
     ])
 
     // Enable Realtime Subscriptions
@@ -297,6 +299,17 @@ export const store = reactive({
       }
       this.driverBus = busData
     }
+  },
+
+  async fetchDrivers() {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', 'driver')
+      .order('full_name', { ascending: true })
+    
+    if (data) this.drivers = data
+    if (error) console.error('Error fetching drivers:', error)
   },
 
   async fetchProfile(userId) {
@@ -407,6 +420,12 @@ export const store = reactive({
   async assignRouteToBus(busId, routeId) {
     const { error } = await supabase.from('buses').update({ route_id: routeId }).eq('id', busId)
     if (error) console.error('Error assigning route to bus:', error)
+    else await this.fetchBuses()
+  },
+
+  async assignDriverToBus(busId, driverId) {
+    const { error } = await supabase.from('buses').update({ driver_id: driverId }).eq('id', busId)
+    if (error) console.error('Error assigning driver to bus:', error)
     else await this.fetchBuses()
   },
 

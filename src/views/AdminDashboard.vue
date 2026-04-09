@@ -287,7 +287,8 @@
                   <tr class="bg-primary-100/50">
                     <th class="px-6 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider border-b border-border">Plate</th>
                     <th class="px-6 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider border-b border-border">Capacity</th>
-                    <th class="px-6 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider border-b border-border">Assigned Route</th>
+                    <th class="px-6 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider border-b border-border">Route</th>
+                    <th class="px-6 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider border-b border-border">Assigned Driver</th>
                     <th class="px-6 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider border-b border-border">Status</th>
                     <th class="px-6 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider border-b border-border text-right">Actions</th>
                   </tr>
@@ -305,6 +306,18 @@
                         <option :value="null">Unassigned</option>
                         <option v-for="r in store.routes" :key="r.id" :value="r.id">
                           {{ r.from }} → {{ r.to }}
+                        </option>
+                      </select>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <select 
+                        :value="bus.driver_id" 
+                        @change="(e) => store.assignDriverToBus(bus.id, e.target.value)"
+                        class="text-xs bg-white border border-border rounded px-2 py-1 focus:ring-1 focus:ring-accent outline-none w-full max-w-[150px]"
+                      >
+                        <option :value="null">Unassigned</option>
+                        <option v-for="d in store.drivers" :key="d.id" :value="d.id">
+                          {{ d.full_name || d.email }}
                         </option>
                       </select>
                     </td>
