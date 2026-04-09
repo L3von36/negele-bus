@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full bg-[#020617]/40 backdrop-blur-xl">
-    <!-- Sophisticated Header / Search -->
-    <div class="px-6 py-5 border-b border-white/5 space-y-4">
+    <!-- Header / Search -->
+    <div :class="compact ? 'px-4 py-3' : 'px-6 py-5'" class="border-b border-white/5 space-y-3">
       <div v-if="showStats" class="grid grid-cols-2 gap-3 mb-2">
         <div class="bg-white/5 rounded-2xl p-4 border border-white/10">
           <p class="text-white/30 text-[8px] font-black uppercase tracking-widest">{{ t('passenger') }}s</p>
@@ -44,7 +44,7 @@
     </div>
 
     <!-- Passenger Cards List -->
-    <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-3 pb-24">
+    <div :class="compact ? 'p-3 space-y-2 pb-6' : 'p-6 space-y-3 pb-24'" class="flex-1 overflow-y-auto custom-scrollbar">
       <div v-for="booking in manifestList" :key="booking.id" 
         class="relative group animate-slide-up"
         :style="{ animationDelay: (index * 50) + 'ms' }"
@@ -119,7 +119,8 @@ import { store, t } from '../store.js'
 const props = defineProps({
   showStats: { type: Boolean, default: true },
   showRouteFilter: { type: Boolean, default: true },
-  initialRoute: { type: String, default: '' }
+  initialRoute: { type: String, default: '' },
+  compact: { type: Boolean, default: false }
 })
 
 const searchQuery = ref('')

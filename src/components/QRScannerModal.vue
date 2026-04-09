@@ -37,19 +37,9 @@
            </div>
         </div>
 
-        <div class="mt-8 flex flex-col gap-3">
-           <div v-if="lastResult" class="bg-green-500/10 border border-green-500/20 p-4 rounded-2xl flex items-center gap-4 animate-fade-in">
-              <div class="w-10 h-10 rounded-xl bg-green-500 flex items-center justify-center text-white shrink-0">
-                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-              </div>
-              <div>
-                 <p class="text-green-500 text-[10px] font-black uppercase tracking-widest">Boarded Successfully</p>
-                 <p class="text-white font-bold text-sm">Ticket #{{ lastResult }}</p>
-              </div>
-           </div>
-           
+        <div class="mt-6">
            <p class="text-center text-white/30 text-[10px] font-medium leading-relaxed px-4">
-              Please grant camera permissions when prompted. Scanning is handled locally on your device for security.
+              Grant camera permission when prompted. Each ticket can only be scanned once.
            </p>
         </div>
       </div>
@@ -60,7 +50,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { Html5QrcodeScanner } from 'html5-qrcode'
-import { store } from '../store.js'
 
 const props = defineProps({
   isOpen: Boolean
@@ -68,24 +57,19 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'scanned'])
 
-const lastResult = ref(null)
+const lastScanned = ref(null)
 let html5QrcodeScanner = null
+let lastScanTime = 0
 
 function onScanSuccess(decodedText) {
-  // Assuming decodedText is the booking ID
-  const bookingId = decodedText
-  const booking = store.bookings.find(b => b.id === bookingId)
-  
-  if (booking && !booking.boarded) {
-    store.toggleBoarding(bookingId)
-    lastResult.value = bookingId
-    emit('scanned', bookingId)
-    
-    // Reset success message after 3 seconds
-    setTimeout(() => {
-      lastResult.value = null
-    }, 3000)
-  }
+  // Debounce: ignore repeated scans of the same code within 2s
+  const now = Date.now()
+  if (decodedText === lastScanned.value && now - lastScanTime < 2000) return
+  lastScanned.value = decodedText
+  lastScanTime = now
+
+  // Emit raw ID — parent handles all validation and boarding logic
+  emit('scanned', decodedText)
 }
 
 watch(() => props.isOpen, (newVal) => {

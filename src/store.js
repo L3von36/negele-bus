@@ -5,8 +5,9 @@ export const store = reactive({
   user: null,
   userProfile: null,
   isAuthenticated: false,
+  isInitialized: false,
   activeLang: 'en',
-  
+
   bookings: [],
   routes: [],
   buses: [],
@@ -402,6 +403,8 @@ export const store = reactive({
       this.fetchDrivers()
     ])
 
+    this.isInitialized = true
+
     // Enable Realtime Subscriptions
     supabase
       .channel('schema-db-changes')
@@ -491,7 +494,21 @@ export const store = reactive({
       this.user = { id: driverId, email: 'ahmed@easyride.et' }
       this.userProfile = { id: driverId, full_name: 'Ahmed Yusuf', role: 'driver' }
       this.isAuthenticated = true
-      await this.fetchDriverBus()
+      // Try real fetch first, fall back to demo bus if Supabase unavailable
+      await this.fetchDriverBus().catch(() => {})
+      if (!this.driverBus) {
+        // Demo fallback bus so the driver portal is testable
+        const demoRoute = this.routes[0] || null
+        this.driverBus = {
+          id: 'demo-bus-001',
+          plate: 'AA-1234',
+          capacity: 45,
+          status: 'Active',
+          driver_id: driverId,
+          route_id: demoRoute?.id || null,
+          routes: demoRoute ? { ...demoRoute, from: demoRoute.from_city, to: demoRoute.to_city } : null
+        }
+      }
       return { user: this.user }
     }
 
@@ -506,10 +523,10 @@ export const store = reactive({
   },
 
   async signOut() {
-    const { error } = await supabase.auth.signOut()
-    if (error) console.error('Error signing out:', error)
+    await supabase.auth.signOut().catch(() => {})
     this.user = null
     this.userProfile = null
+    this.driverBus = null
     this.isAuthenticated = false
   },
 
@@ -547,8 +564,14 @@ export const store = reactive({
   async toggleBoarding(id) {
     const b = this.bookings.find(b => b.id === id)
     if (b) {
-      const { error } = await supabase.from('bookings').update({ boarded: !b.boarded }).eq('id', id)
-      if (error) console.error('Error toggling boarding:', error)
+      // Optimistic update — reflect change immediately
+      b.boarded = !b.boarded
+      const { error } = await supabase.from('bookings').update({ boarded: b.boarded }).eq('id', id)
+      if (error) {
+        // Revert on failure
+        b.boarded = !b.boarded
+        console.error('Error toggling boarding:', error)
+      }
     }
   },
 
@@ -593,6 +616,13 @@ export const store = reactive({
   },
 
   async updateBusStatus(id, newStatus) {
+    // Optimistic update — reflect change immediately in UI
+    if (this.driverBus?.id === id) {
+      this.driverBus = { ...this.driverBus, status: newStatus }
+    }
+    const idx = this.buses.findIndex(b => b.id === id)
+    if (idx !== -1) this.buses[idx] = { ...this.buses[idx], status: newStatus }
+
     const { error } = await supabase.from('buses').update({ status: newStatus }).eq('id', id)
     if (error) console.error('Error updating bus status:', error)
   },
