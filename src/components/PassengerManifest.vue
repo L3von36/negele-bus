@@ -45,7 +45,7 @@
 
     <!-- Passenger Cards List -->
     <div :class="compact ? 'p-3 space-y-2 pb-6' : 'p-6 space-y-3 pb-24'" class="flex-1 overflow-y-auto custom-scrollbar">
-      <div v-for="booking in manifestList" :key="booking.id" 
+      <div v-for="(booking, index) in manifestList" :key="booking.id"
         class="relative group animate-slide-up"
         :style="{ animationDelay: (index * 50) + 'ms' }"
       >

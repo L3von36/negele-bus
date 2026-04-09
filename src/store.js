@@ -598,6 +598,28 @@ export const store = reactive({
     if (error) console.error('Error adding bus:', error)
   },
 
+  async updateRoute(id, routeData) {
+    const dbData = {
+      from_city: routeData.from,
+      to_city: routeData.to,
+      price: routeData.price,
+      distance: routeData.distance || '---',
+      duration: routeData.duration || '---',
+    }
+    const { error } = await supabase.from('routes').update(dbData).eq('id', id)
+    if (error) console.error('Error updating route:', error)
+  },
+
+  async deleteRoute(id) {
+    const { error } = await supabase.from('routes').delete().eq('id', id)
+    if (error) console.error('Error deleting route:', error)
+  },
+
+  async deleteBus(id) {
+    const { error } = await supabase.from('buses').delete().eq('id', id)
+    if (error) console.error('Error deleting bus:', error)
+  },
+
   async updateBusStatus(id, newStatus) {
     // Optimistic update — reflect change immediately in UI
     if (this.driverBus?.id === id) {
