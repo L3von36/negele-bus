@@ -121,35 +121,30 @@ async function startCamera() {
 
   try {
     scanner = new Html5Qrcode('qr-reader')
-    await scanner.start(
-      { facingMode: 'environment' },
-      {
-        fps: 10,
-        qrbox: { width: 200, height: 200 },
-        aspectRatio: 1.0,
-      },
-      onScanSuccess,
-      () => {} // ignore per-frame decode errors (very noisy)
-    )
-    cameraState.value = 'active'
-  } catch (err) {
-    // Fallback: try any available camera
+
+    // Enumerate cameras first and pick rear-facing one by device ID.
+    // This avoids the browser's "choose front/back" dialog — we decide directly.
+    let cameraId = null
     try {
       const cameras = await Html5Qrcode.getCameras()
-      if (cameras.length > 0) {
-        await scanner.start(
-          cameras[cameras.length - 1].id,
-          { fps: 10, qrbox: { width: 200, height: 200 } },
-          onScanSuccess,
-          () => {}
-        )
-        cameraState.value = 'active'
-        return
+      if (cameras.length) {
+        // Prefer any camera whose label mentions back/rear/environment
+        const rear = cameras.find(c => /back|rear|environment/i.test(c.label))
+          ?? cameras[cameras.length - 1] // last camera is rear on most phones
+        cameraId = rear.id
       }
     } catch (_) {}
 
+    await scanner.start(
+      cameraId ?? { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 200, height: 200 }, aspectRatio: 1.0 },
+      onScanSuccess,
+      () => {}
+    )
+    cameraState.value = 'active'
+  } catch (err) {
     cameraState.value = 'error'
-    cameraError.value = err?.message?.includes('permission')
+    cameraError.value = err?.message?.toLowerCase().includes('permission')
       ? 'Camera permission denied. Please allow camera access.'
       : 'Could not access camera.'
   }
