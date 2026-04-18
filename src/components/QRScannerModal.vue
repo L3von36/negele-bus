@@ -144,9 +144,16 @@ async function startCamera() {
     cameraState.value = 'active'
   } catch (err) {
     cameraState.value = 'error'
-    cameraError.value = err?.message?.toLowerCase().includes('permission')
-      ? 'Camera permission denied. Please allow camera access.'
-      : 'Could not access camera.'
+    const msg = String(err?.message || err?.name || '').toLowerCase()
+    if (msg.includes('permission') || msg.includes('denied') || msg.includes('notallowederror')) {
+      cameraError.value = 'Camera permission denied. Please allow camera access in your browser settings.'
+    } else if (msg.includes('notfound') || msg.includes('devicenotfound') || msg.includes('nomediafound')) {
+      cameraError.value = 'No camera found on this device.'
+    } else if (msg.includes('notreadable') || msg.includes('inuse') || msg.includes('trackstarterror')) {
+      cameraError.value = 'Camera is in use by another app. Close it and try again.'
+    } else {
+      cameraError.value = err?.message || 'Could not start camera. Please try again.'
+    }
   }
 }
 

@@ -1,24 +1,6 @@
 <template>
   <div class="min-h-screen bg-[#0F172A] overflow-x-hidden">
 
-    <!-- Toast Notification -->
-    <transition name="toast">
-      <div
-        v-if="toastMessage"
-        :class="{
-          'bg-green-500/20 border-green-500/30 text-green-300': toastType === 'success',
-          'bg-red-500/20 border-red-500/30 text-red-300': toastType === 'error',
-          'bg-yellow-500/20 border-yellow-500/30 text-yellow-300': toastType === 'warning',
-        }"
-        class="fixed top-5 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2.5 px-5 py-3 rounded-2xl border shadow-lg max-w-xs text-center"
-      >
-        <svg v-if="toastType === 'success'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-        <svg v-else-if="toastType === 'warning'" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/></svg>
-        <svg v-else class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-        <span class="text-sm font-medium">{{ toastMessage }}</span>
-      </div>
-    </transition>
-
     <!-- Navigation -->
     <nav class="sticky top-0 z-50 px-6 py-4 bg-[#0F172A] border-b border-white/10">
       <div class="max-w-7xl mx-auto flex items-center justify-between">
@@ -350,6 +332,7 @@
 import { ref, computed, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { store, t } from '../store.js'
+import { toast } from '../lib/toast.js'
 import PassengerManifest from '../components/PassengerManifest.vue'
 import QRScannerModal from '../components/QRScannerModal.vue'
 import { formatEthiopian } from '../lib/ethiopianCalendar.js'
@@ -365,20 +348,6 @@ const newMessage = ref('')
 const chatEndRef = ref(null)
 const chatScrollRef = ref(null)
 let sosTimer = null
-let toastTimer = null
-
-// Toast
-const toastMessage = ref('')
-const toastType = ref('success')
-
-function showToast(message, type = 'success') {
-  toastMessage.value = message
-  toastType.value = type
-  clearTimeout(toastTimer)
-  // Errors/warnings stay longer
-  const duration = type === 'success' ? 3000 : 4500
-  toastTimer = setTimeout(() => { toastMessage.value = '' }, duration)
-}
 
 // Refresh driver bus data on mount in case it wasn't loaded yet
 onMounted(async () => {
@@ -457,51 +426,51 @@ function onTicketScanned(rawId) {
   if (!booking) {
     const msg = 'Ticket not found in system'
     scanResult.value = { type: 'error', message: msg }
-    showToast(msg, 'error')
+    toast.error(msg)
     return
   }
   if (booking.status === 'Canceled' || booking.status === 'Cancelled') {
     const msg = 'This booking has been cancelled'
     scanResult.value = { type: 'error', message: msg }
-    showToast(msg, 'error')
+    toast.error(msg)
     return
   }
   if (booking.status !== 'Confirmed') {
     const msg = 'Booking is not confirmed'
     scanResult.value = { type: 'error', message: msg }
-    showToast(msg, 'error')
+    toast.error(msg)
     return
   }
   if (assignedRouteText.value && booking.route !== assignedRouteText.value) {
     const msg = `Wrong route — ticket is for: ${booking.route}`
     scanResult.value = { type: 'warning', message: msg }
-    showToast(msg, 'warning')
+    toast.info(msg)
     return
   }
   if (booking.boarded) {
     const msg = `${booking.name} — already boarded (Seat ${booking.seat_number || '?'})`
     scanResult.value = { type: 'warning', message: msg }
-    showToast(msg, 'warning')
+    toast.info(msg)
     return
   }
 
-  store.toggleBoarding(rawId)
+  await store.toggleBoarding(rawId)
   const msg = `${booking.name} — Seat ${booking.seat_number || '?'}`
   scanResult.value = { type: 'success', message: msg }
-  showToast(`Boarded: ${msg}`, 'success')
+  toast.success(`Boarded: ${msg}`)
 }
 
 function startTrip() {
   if (!store.driverBus?.id) return
   isDepartConfirmOpen.value = false
   store.updateBusStatus(store.driverBus.id, 'On Route')
-  showToast('Trip started — safe travels!', 'success')
+  toast.success('Trip started — safe travels!')
 }
 
 function endTrip() {
   if (!store.driverBus?.id) return
   store.updateBusStatus(store.driverBus.id, 'Arrived')
-  showToast(`Trip complete — ${boardedCount.value} boarded, ${noShowCount.value} no-show${noShowCount.value !== 1 ? 's' : ''}`, 'success')
+  toast.success(`Trip complete — ${boardedCount.value} boarded, ${noShowCount.value} no-show${noShowCount.value !== 1 ? 's' : ''}`)
 }
 
 function cancelSOS() {
@@ -510,6 +479,7 @@ function cancelSOS() {
 }
 
 function triggerSOS() {
+  if (sosCountdown.value > 0) return
   sosCountdown.value = 5
   sosTimer = setInterval(() => {
     sosCountdown.value--
@@ -548,6 +518,4 @@ async function handleSignOut() {
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 10px; }
 
-.toast-enter-active, .toast-leave-active { transition: all 0.25s ease; }
-.toast-enter-from, .toast-leave-to { opacity: 0; transform: translate(-50%, -12px); }
 </style>

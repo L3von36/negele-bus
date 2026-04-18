@@ -69,9 +69,9 @@
           </button>
         </form>
 
-        <!-- Quick Fill (test accounts) -->
-        <div class="mt-6 pt-5 border-t border-white/10">
-          <p class="text-white/20 text-[10px] font-semibold uppercase tracking-widest text-center mb-3">Quick Fill</p>
+        <!-- Quick Fill — dev only, never shown in production -->
+        <div v-if="isDev" class="mt-6 pt-5 border-t border-white/10">
+          <p class="text-white/20 text-[10px] font-semibold uppercase tracking-widest text-center mb-3">Dev Quick Fill</p>
           <div class="grid grid-cols-2 gap-2">
             <button
               @click="fillDemo('admin')"
@@ -103,11 +103,12 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { store, t } from '../store.js'
 
 const router = useRouter()
+const isDev = computed(() => import.meta.env.DEV)
 const isLoading = ref(false)
 const authError = ref('')
 const email = ref('')
@@ -166,8 +167,14 @@ async function loginAsDemo(role) {
 
 function redirectByRole() {
   const role = store.userProfile?.role
-  if (role === 'admin') router.push('/admin')
-  else if (role === 'driver') router.push('/driver')
-  else router.push('/')
+  const dest = {
+    admin:          '/admin',
+    driver:         '/driver',
+    station_master: '/station',
+    finance:        '/finance',
+    authority:      '/authority',
+    inspector:      '/inspector',
+  }[role] || '/'
+  router.push(dest)
 }
 </script>

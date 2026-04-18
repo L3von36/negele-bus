@@ -42,14 +42,27 @@ import { t } from '../store.js'
 // Compute dynamic chart data based on store
 const revenueData = computed(() => {
   const labels = getRecentEthiopianDates(6, store, t)
+  const now = new Date()
+  const dayRevenue = Array.from({ length: 6 }, (_, i) => {
+    const day = new Date(now)
+    day.setDate(day.getDate() - (5 - i))
+    const dayStr = day.toISOString().split('T')[0]
+    return store.bookings
+      .filter(b => {
+        if (b.status === 'Canceled') return false
+        const bDate = b.travel_date || (b.created_at ? b.created_at.split('T')[0] : '')
+        return bDate === dayStr
+      })
+      .reduce((sum, b) => sum + Number(b.amount || 0), 0)
+  })
   return {
     labels,
     datasets: [
       {
-        label: 'Revenue',
-        backgroundColor: '#F97316', // Accent orange
+        label: 'Revenue (ETB)',
+        backgroundColor: '#F97316',
         borderRadius: 4,
-        data: [15000, 22000, 18000, 24000, 31000, store.totalRevenue]
+        data: dayRevenue
       }
     ]
   }
@@ -68,14 +81,21 @@ const barOptions = {
 }
 
 const routeData = computed(() => {
-  // Dynamically map routes to random/computed distributions
-  const labels = store.routes.slice(0, 4).map(r => r.from.split(' ')[0] + '-' + r.to.split(' ')[0])
+  const counts = {}
+  store.bookings.forEach(b => {
+    if (b.status === 'Canceled') return
+    const key = b.route || 'Other'
+    counts[key] = (counts[key] || 0) + 1
+  })
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 4)
+  const labels = entries.map(([name]) => name.split(' → ').map(s => s.split(' ')[0]).join('-'))
+  const data = entries.map(([, count]) => count)
   return {
-    labels,
+    labels: labels.length ? labels : ['No data'],
     datasets: [
       {
         backgroundColor: ['#F97316', '#3b82f6', '#8b5cf6', '#10b981'],
-        data: [45, 25, 20, 10]
+        data: data.length ? data : [1]
       }
     ]
   }

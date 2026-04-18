@@ -161,10 +161,17 @@ const chartOptions = {
   }
 }
 
+function csvEscape(val) {
+  const str = String(val ?? '')
+  return (str.includes(',') || str.includes('"') || str.includes('\n'))
+    ? '"' + str.replace(/"/g, '""') + '"'
+    : str
+}
+
 function exportReport() {
-  const csvContent = "data:text/csv;charset=utf-8," 
+  const csvContent = "data:text/csv;charset=utf-8,"
     + "Route,Revenue,Bookings\n"
-    + sortedRouteStats.value.map(e => `${e.name},${e.revenue},${e.count}`).join("\n")
+    + sortedRouteStats.value.map(e => [csvEscape(e.name), e.revenue, e.count].join(',')).join('\n')
   
   const et = currentEthiopian()
   const dateStr = `${et.year}-${String(et.month).padStart(2, '0')}-${String(et.day).padStart(2, '0')}`

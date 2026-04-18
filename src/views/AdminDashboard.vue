@@ -28,8 +28,9 @@
       
       <!-- Nav Links -->
       <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-        <button 
+        <button
           @click="currentTab = 'Overview'; isSidebarOpen = false"
+          :aria-current="currentTab === 'Overview' ? 'page' : undefined"
           :class="['w-full flex items-center px-3 py-2.5 rounded-lg font-medium text-sm transition-colors', currentTab === 'Overview' ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:text-text-primary hover:bg-black/5']">
           <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
           Dashboard
@@ -113,7 +114,7 @@
       </header>
 
       <!-- Scrollable content -->
-      <div class="flex-1 overflow-y-auto bg-background p-6">
+      <div ref="mainScrollRef" class="flex-1 overflow-y-auto bg-background p-6">
         
         <!-- =================== OVERVIEW TAB =================== -->
         <div v-if="currentTab === 'Overview'" class="animate-fade-in space-y-8">
@@ -454,14 +455,14 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { store } from '../store.js'
+import { store, t } from '../store.js'
 import AdminCharts from '../components/AdminCharts.vue'
 import SeatMapModal from '../components/SeatMapModal.vue'
 import EditRouteModal from '../components/EditRouteModal.vue'
 import AdminReports from '../components/AdminReports.vue'
+import PassengerManifest from '../components/PassengerManifest.vue'
 import DatePickerEthiopian from '../components/DatePickerEthiopian.vue'
 import { formatEthiopian, currentEthiopian } from '../lib/ethiopianCalendar.js'
-import { t } from '../store.js'
 
 const router = useRouter()
 const isSidebarOpen = ref(false)
@@ -472,13 +473,17 @@ const newRoute = reactive({ from: '', to: '', price: null, distance: '---', dura
 const isAddingRoute = ref(false)
 
 async function handleNewRoute() {
+  if (isAddingRoute.value) return
   if (newRoute.from && newRoute.to && newRoute.price) {
     isAddingRoute.value = true
-    await store.addRoute({ ...newRoute })
-    newRoute.from = ''
-    newRoute.to = ''
-    newRoute.price = null
-    isAddingRoute.value = false
+    try {
+      await store.addRoute({ ...newRoute })
+      newRoute.from = ''
+      newRoute.to = ''
+      newRoute.price = null
+    } finally {
+      isAddingRoute.value = false
+    }
   }
 }
 
@@ -496,12 +501,16 @@ const newBus = reactive({ plate: '', capacity: null })
 const isAddingBus = ref(false)
 
 async function handleNewBus() {
+  if (isAddingBus.value) return
   if (newBus.plate && newBus.capacity) {
     isAddingBus.value = true
-    await store.addBus({ ...newBus })
-    newBus.plate = ''
-    newBus.capacity = null
-    isAddingBus.value = false
+    try {
+      await store.addBus({ ...newBus })
+      newBus.plate = ''
+      newBus.capacity = null
+    } finally {
+      isAddingBus.value = false
+    }
   }
 }
 
@@ -540,6 +549,12 @@ const paginatedBookings = computed(() => {
 
 watch([bookingSearch, bookingDateFilter, bookingStatusFilter], () => { currentPage.value = 1 })
 
+// Reset scroll position when switching tabs
+const mainScrollRef = ref(null)
+watch(currentTab, () => {
+  if (mainScrollRef.value) mainScrollRef.value.scrollTop = 0
+})
+
 // ── Confirmation Modal ────────────────────────────────────────────
 const confirmModal = reactive({ show: false, message: '', onConfirm: null })
 
@@ -555,10 +570,24 @@ function doConfirm() {
 }
 
 // ── CSV Export ────────────────────────────────────────────────────
+function csvEscape(val) {
+  const str = String(val ?? '')
+  return (str.includes(',') || str.includes('"') || str.includes('\n'))
+    ? '"' + str.replace(/"/g, '""') + '"'
+    : str
+}
+
 function exportCSV() {
   const headers = ['ID', 'Passenger Name', 'Route', 'Date', 'Amount', 'Status']
-  const rows = filteredBookings.value.map(b => [b.id, b.name, b.route, formatEthiopian(new Date(b.date), store, t), b.amount, b.status])
-  const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n')
+  const rows = filteredBookings.value.map(b => [
+    b.id,
+    csvEscape(b.name),
+    csvEscape(b.route),
+    csvEscape(formatEthiopian(new Date(b.date), store, t)),
+    b.amount,
+    b.status
+  ])
+  const csvContent = 'data:text/csv;charset=utf-8,' + [headers.map(csvEscape).join(','), ...rows.map(e => e.join(','))].join('\n')
   const et = currentEthiopian()
   const dateStr = `${et.year}-${String(et.month).padStart(2, '0')}-${String(et.day).padStart(2, '0')}`
   const link = document.createElement('a')

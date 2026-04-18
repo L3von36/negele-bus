@@ -82,7 +82,7 @@
              <!-- Call Action -->
              <a 
                v-if="booking.phone"
-               :href="'tel:' + booking.phone" 
+               :href="normalizedTel(booking.phone)"
                @click.stop
                class="w-9 h-9 rounded-xl flex items-center justify-center text-white/30 hover:bg-accent/20 hover:text-accent transition-all border border-white/5"
              >
@@ -124,21 +124,37 @@ const props = defineProps({
 })
 
 const searchQuery = ref('')
+const debouncedQuery = ref('')
 const routeFilter = ref(props.initialRoute)
+let searchTimer = null
 
 watch(() => props.initialRoute, (newVal) => {
   routeFilter.value = newVal
 })
 
+watch(searchQuery, (val) => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => { debouncedQuery.value = val }, 250)
+})
+
+function normalizedTel(phone) {
+  if (!phone) return ''
+  const digits = String(phone).replace(/[\s\-()]/g, '')
+  if (digits.startsWith('09') || digits.startsWith('07')) {
+    return 'tel:+251' + digits.slice(1)
+  }
+  return 'tel:' + digits
+}
+
 const manifestList = computed(() => {
   let list = store.bookings.filter(b => b.status === 'Confirmed')
   if (routeFilter.value) list = list.filter(b => b.route === routeFilter.value)
-  if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase()
-    list = list.filter(b => 
-      b.name.toLowerCase().includes(q) || 
-      b.id.toLowerCase().includes(q) || 
-      (b.phone && b.phone.includes(q))
+  const q = debouncedQuery.value.toLowerCase().replace(/[\s\-]/g, '')
+  if (q) {
+    list = list.filter(b =>
+      b.name.toLowerCase().includes(debouncedQuery.value.toLowerCase()) ||
+      b.id.toLowerCase().includes(q) ||
+      (b.phone && b.phone.replace(/[\s\-]/g, '').includes(q))
     )
   }
   return list.sort((a, b) => (Number(a.seat_number) || 0) - (Number(b.seat_number) || 0))
