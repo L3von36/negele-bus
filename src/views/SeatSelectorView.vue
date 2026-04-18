@@ -126,14 +126,16 @@ const toDisplay   = computed(() => t('cities.' + to.value)   || to.value)
 
 // Get taken seats from live bookings (real-time from Supabase) + admin-blocked seats
 const takenSeats = computed(() => {
-  const routeStr = `${fromDisplay.value} → ${toDisplay.value}`
-  const dateStr  = dateRaw.value
+  const routeStr   = `${fromDisplay.value} → ${toDisplay.value}`
+  // BookingView stores: dateRaw + ', ' + depart — match exactly so seats from a
+  // different departure time on the same day don't bleed through.
+  const dateDepart = dateRaw.value + ', ' + depart.value
 
   const bookedSeats = store.bookings
     .filter(b =>
       b.status === 'Confirmed' &&
       b.route === routeStr &&
-      b.date?.startsWith(dateStr)
+      b.date === dateDepart
     )
     .map(b => Number(b.seat_number))
     .filter(Boolean)
