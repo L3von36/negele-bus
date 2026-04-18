@@ -49,9 +49,24 @@
       <!-- Results count -->
       <p class="text-xs text-text-secondary mb-4">{{ buses.length }} {{ t('buses_available') }}</p>
 
+      <!-- No buses empty state -->
+      <div v-if="matchingRoute && buses.length === 0" class="text-center py-16 animate-fade-in">
+        <svg class="w-12 h-12 text-text-secondary/30 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/>
+        </svg>
+        <p class="text-text-primary font-bold mb-1">No buses on this route yet</p>
+        <p class="text-text-secondary text-sm">Check back later or try a different date.</p>
+      </div>
+
+      <!-- No route match -->
+      <div v-if="!matchingRoute" class="text-center py-16 animate-fade-in">
+        <p class="text-text-primary font-bold mb-1">Route not found</p>
+        <p class="text-text-secondary text-sm">We don't operate on this route yet.</p>
+      </div>
+
       <!-- Bus Cards -->
       <div class="space-y-4">
-        <div v-for="bus in buses" :key="bus.name"
+        <div v-for="bus in buses" :key="bus.id"
           class="bg-card rounded-xl border border-border shadow-soft p-4 sm:p-5 hover:shadow-medium hover:-translate-y-1 hover:border-text-primary transition-all duration-300 group animate-fade-in relative overflow-hidden">
           
           <!-- Top row: name + price -->
@@ -154,29 +169,60 @@ const matchingRoute = computed(() => {
   }) || store.routes[1] // Fallback to Negele -> Addis for demo if no match
 })
 
-// Create "Buses" mock search results based on the route found
+// Departure time slots — assigned per bus index since schedules aren't in DB yet
+const DEPARTURE_SLOTS = ['06:00', '08:30', '12:00', '14:00', '16:30']
+
+function parseDurationToMinutes(str) {
+  if (!str || str === '---') return 0
+  const h = Number((str.match(/(\d+)\s*h/) || [])[1] || 0)
+  const m = Number((str.match(/(\d+)\s*m/) || [])[1] || 0)
+  return h * 60 + m
+}
+
+function addMinutesToTime(time, minutes) {
+  if (!minutes) return '—'
+  const [h, m] = time.split(':').map(Number)
+  const total = h * 60 + m + minutes
+  return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+}
+
+// Real buses from DB filtered by route assignment
 const buses = computed(() => {
   if (!matchingRoute.value) return []
-  
-  // We'll generate a few mock trips for this route
-  return [
-    { name: 'Negele Express', type: 'Standard', seats: 44, price: matchingRoute.value.price, depart: '06:00', arrive: '10:30', id: 'B1' },
-    { name: 'Sky Bus', type: 'VIP', seats: 32, price: Math.round(matchingRoute.value.price * 1.25), depart: '08:30', arrive: '13:00', id: 'B2' },
-    { name: 'Selam Bus', type: 'Standard', seats: 44, price: matchingRoute.value.price, depart: '14:00', arrive: '18:30', id: 'B3' }
-  ]
+  const routeBuses = store.buses.filter(b =>
+    b.route_id === matchingRoute.value.id && b.status !== 'Maintenance'
+  )
+  const durationMins = parseDurationToMinutes(matchingRoute.value.duration)
+  return routeBuses.map((bus, i) => {
+    const depart = DEPARTURE_SLOTS[i % DEPARTURE_SLOTS.length]
+    return {
+      id: bus.id,
+      name: bus.plate,
+      type: bus.capacity >= 40 ? 'Standard' : 'Executive',
+      seats: bus.capacity,
+      price: matchingRoute.value.price,
+      depart,
+      arrive: addMinutesToTime(depart, durationMins),
+      busId: bus.id,
+      capacity: bus.capacity,
+    }
+  })
 })
 
 function selectBus(bus) {
   router.push({
     path: '/seat-selector',
-    query: { 
-      bus: bus.name, 
-      price: bus.price, 
-      from: from.value, 
-      to: to.value, 
-      depart: bus.depart, 
-      arrive: bus.arrive, 
-      date: date.value,
+    query: {
+      bus: bus.name,
+      busId: bus.busId,
+      capacity: bus.capacity,
+      price: bus.price,
+      from: from.value,
+      to: to.value,
+      depart: bus.depart,
+      arrive: bus.arrive,
+      date: dateInitial.value,   // Gregorian date for filtering
+      dateDisplay: date.value,   // Ethiopian date for display
       routeId: matchingRoute.value?.id
     }
   })

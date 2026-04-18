@@ -536,9 +536,17 @@ export const store = reactive({
   },
 
   async addBooking(bookingData) {
-    const { error } = await supabase.from('bookings').insert([bookingData])
-    if (error) console.error('Error adding booking:', error)
-    else await this.fetchBookings()
+    const { data, error } = await supabase
+      .from('bookings')
+      .insert([bookingData])
+      .select()
+      .single()
+    if (error) {
+      console.error('Error adding booking:', error)
+      return null
+    }
+    await this.fetchBookings()
+    return data
   },
 
   async cancelBooking(id) {

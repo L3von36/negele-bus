@@ -9,10 +9,8 @@
       <!-- Bus info -->
       <div class="text-center mb-6">
         <h2 class="text-lg sm:text-xl font-bold text-text-primary">{{ busName }}</h2>
-        <p class="text-text-secondary text-sm mt-1">
-          {{ t('cities.' + route.query.from) || from }} → {{ t('cities.' + route.query.to) || to }}
-        </p>
-        <p class="text-text-secondary text-xs mt-0.5">{{ totalSeats }} {{ t('seats_available') }}</p>
+        <p class="text-text-secondary text-sm mt-1">{{ fromDisplay }} → {{ toDisplay }}</p>
+        <p class="text-text-secondary text-xs mt-0.5">{{ capacity }} {{ t('seats_available') }}</p>
       </div>
 
       <!-- Legend -->
@@ -103,33 +101,36 @@ import { useRouter, useRoute } from 'vue-router'
 import { store, t } from '../store.js'
 import MainHeader from '../components/MainHeader.vue'
 import AppButton from '../components/AppButton.vue'
+import { formatEthiopian } from '../lib/ethiopianCalendar.js'
 
 const router = useRouter()
 const route  = useRoute()
 
-const busName   = computed(() => route.query.bus    || 'Ethio Bus')
-const price     = computed(() => route.query.price  || 300)
-const from      = computed(() => route.query.from   || 'Negele Borena')
-const to        = computed(() => route.query.to     || 'Hawassa')
-const depart    = computed(() => route.query.depart || '06:00')
-const arrive    = computed(() => route.query.arrive || '11:45')
-import { formatEthiopian } from '../lib/ethiopianCalendar.js'
-const dateInitial = computed(() => route.query.date || new Date().toISOString().split('T')[0])
-const dateDisplay = computed(() => formatEthiopian(new Date(dateInitial.value), store, t))
+const busName  = computed(() => route.query.bus     || 'Ethio Bus')
+const price    = computed(() => route.query.price   || 300)
+const from     = computed(() => route.query.from    || 'negele-borena')
+const to       = computed(() => route.query.to      || 'hawassa')
+const depart   = computed(() => route.query.depart  || '06:00')
+const arrive   = computed(() => route.query.arrive  || '—')
+const routeId  = computed(() => route.query.routeId || '')
+const capacity = computed(() => Number(route.query.capacity) || 44)
 
-const date = dateDisplay // Use display version for the template
+// Dates — SearchResultsView now sends both dateRaw (Gregorian) and dateDisplay (Ethiopian)
+const dateRaw     = computed(() => route.query.date     || new Date().toISOString().split('T')[0])
+const dateDisplay = computed(() => route.query.dateDisplay || formatEthiopian(new Date(dateRaw.value), store, t))
+const date        = dateDisplay
 
-const routeId   = computed(() => route.query.routeId || 'R2')
-const totalSeats = 44
+// Route string uses display names so it matches what BookingView stores
+const fromDisplay = computed(() => t('cities.' + from.value) || from.value)
+const toDisplay   = computed(() => t('cities.' + to.value)   || to.value)
 
 // Get taken seats from live bookings (real-time from Supabase) + admin-blocked seats
 const takenSeats = computed(() => {
-  const routeStr = `${from.value} → ${to.value}`
-  const dateStr = dateInitial.value // Use Gregorian for filtering logic
+  const routeStr = `${fromDisplay.value} → ${toDisplay.value}`
+  const dateStr  = dateRaw.value
 
-  // Seats taken by confirmed bookings on this exact route + date
   const bookedSeats = store.bookings
-    .filter(b => 
+    .filter(b =>
       b.status === 'Confirmed' &&
       b.route === routeStr &&
       b.date?.startsWith(dateStr)
@@ -137,7 +138,6 @@ const takenSeats = computed(() => {
     .map(b => Number(b.seat_number))
     .filter(Boolean)
 
-  // Also include admin-blocked seats from route config
   const targetRoute = store.routes.find(r => r.id === routeId.value)
   const adminBlocked = targetRoute?.blockedSeats || []
 
@@ -146,18 +146,19 @@ const takenSeats = computed(() => {
 
 const selectedSeat = ref(null)
 
-// Build rows of 4 seats each
-const allSeats = Array.from({ length: totalSeats }, (_, i) => i + 1)
+// Seat grid — driven by real bus capacity
+const allSeats = computed(() => Array.from({ length: capacity.value }, (_, i) => i + 1))
 const seatRows = computed(() => {
   const rows = []
-  for (let i = 0; i < allSeats.length - (allSeats.length % 4 !== 0 ? allSeats.length % 4 : 0); i += 4) {
-    rows.push(allSeats.slice(i, i + 4))
+  const seats = allSeats.value
+  for (let i = 0; i < seats.length - (seats.length % 4 !== 0 ? seats.length % 4 : 0); i += 4) {
+    rows.push(seats.slice(i, i + 4))
   }
   return rows
 })
 const lastSeat = computed(() => {
-  const rem = allSeats.length % 4
-  return rem === 1 ? allSeats[allSeats.length - 1] : null
+  const rem = allSeats.value.length % 4
+  return rem === 1 ? allSeats.value[allSeats.value.length - 1] : null
 })
 
 function seatClass(n) {
@@ -176,8 +177,15 @@ function confirmSeat() {
   router.push({
     path: '/booking',
     query: {
-      bus: busName.value, price: price.value, from: from.value,
-      to: to.value, depart: depart.value, seat: selectedSeat.value, date: date.value
+      bus: busName.value,
+      price: price.value,
+      from: from.value,
+      to: to.value,
+      depart: depart.value,
+      seat: selectedSeat.value,
+      date: dateRaw.value,        // Gregorian date — stored in DB
+      dateDisplay: dateDisplay.value, // Ethiopian date — for display only
+      routeId: routeId.value,
     }
   })
 }
