@@ -432,11 +432,12 @@ export const store = reactive({
   },
 
   async fetchDriverBus() {
-    // 1. Fetch the bus assigned to this driver
     const { data: busData, error: busError } = await supabase
       .from('buses')
       .select('*')
       .eq('driver_id', this.user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle()
     
     if (busError) {
