@@ -9,9 +9,10 @@
       
       <!-- Left: Logo & Title / Back Button -->
       <div class="flex items-center space-x-2 sm:space-x-3 min-w-0">
-        <button 
-          v-if="showBack" 
+        <button
+          v-if="showBack"
           @click="$router.back()"
+          aria-label="Go back"
           class="mr-1 p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-colors text-white"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -169,8 +169,8 @@ const matchingRoute = computed(() => {
   }) || store.routes[1] // Fallback to Negele -> Addis for demo if no match
 })
 
-// Departure time slots — assigned per bus index since schedules aren't in DB yet
-const DEPARTURE_SLOTS = ['06:00', '08:30', '12:00', '14:00', '16:30']
+// Fallback departure slots for buses that predate the depart_time column.
+const DEPARTURE_SLOTS_FALLBACK = ['06:00', '08:30', '12:00', '14:00', '16:30']
 
 function parseDurationToMinutes(str) {
   if (!str || str === '---') return 0
@@ -186,7 +186,9 @@ function addMinutesToTime(time, minutes) {
   return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
-// Real buses from DB filtered by route assignment
+// Real buses from DB filtered by route assignment.
+// Reads depart_time from the bus record when available (post-migration),
+// so the departure time is data-driven rather than positional.
 const buses = computed(() => {
   if (!matchingRoute.value) return []
   const routeBuses = store.buses.filter(b =>
@@ -194,16 +196,16 @@ const buses = computed(() => {
   )
   const durationMins = parseDurationToMinutes(matchingRoute.value.duration)
   return routeBuses.map((bus, i) => {
-    const depart = DEPARTURE_SLOTS[i % DEPARTURE_SLOTS.length]
+    const depart = bus.depart_time || DEPARTURE_SLOTS_FALLBACK[i % DEPARTURE_SLOTS_FALLBACK.length]
     return {
-      id: bus.id,
-      name: bus.plate,
-      type: bus.capacity >= 40 ? 'Standard' : 'Executive',
-      seats: bus.capacity,
-      price: matchingRoute.value.price,
+      id:       bus.id,
+      name:     bus.plate,
+      type:     bus.capacity >= 40 ? 'Standard' : 'Executive',
+      seats:    bus.capacity,
+      price:    matchingRoute.value.price,
       depart,
-      arrive: addMinutesToTime(depart, durationMins),
-      busId: bus.id,
+      arrive:   addMinutesToTime(depart, durationMins),
+      busId:    bus.id,
       capacity: bus.capacity,
     }
   })
