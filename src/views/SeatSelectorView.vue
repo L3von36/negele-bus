@@ -43,7 +43,7 @@
         </div>
 
         <!-- Seats grid: pairs left | aisle | pairs right -->
-        <div class="space-y-2">
+        <div class="space-y-2" role="group" :aria-label="t('select_seat')">
           <template v-for="row in seatRows" :key="row[0]">
             <div class="flex items-center justify-center gap-1.5 sm:gap-2">
               <!-- Left pair -->
@@ -51,17 +51,21 @@
                 v-for="n in row.slice(0,2)" :key="n"
                 @click="selectSeat(n)"
                 :disabled="takenSeats.includes(n)"
+                :aria-label="seatAriaLabel(n)"
+                :aria-pressed="selectedSeat === n"
                 :class="seatClass(n)"
                 class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl text-sm font-semibold transition-all active:scale-95">
                 {{ n }}
               </button>
               <!-- Aisle -->
-              <div class="w-4 sm:w-6"></div>
+              <div class="w-4 sm:w-6" aria-hidden="true"></div>
               <!-- Right pair -->
               <button
                 v-for="n in row.slice(2,4)" :key="n"
                 @click="selectSeat(n)"
                 :disabled="takenSeats.includes(n)"
+                :aria-label="seatAriaLabel(n)"
+                :aria-pressed="selectedSeat === n"
                 :class="seatClass(n)"
                 class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl text-sm font-semibold transition-all active:scale-95">
                 {{ n }}
@@ -73,6 +77,8 @@
             <button
               @click="selectSeat(lastSeat)"
               :disabled="takenSeats.includes(lastSeat)"
+              :aria-label="seatAriaLabel(lastSeat)"
+              :aria-pressed="selectedSeat === lastSeat"
               :class="seatClass(lastSeat)"
               class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl text-sm font-semibold transition-all active:scale-95">
               {{ lastSeat }}
@@ -107,6 +113,7 @@ const router = useRouter()
 const route  = useRoute()
 
 const busName  = computed(() => route.query.bus     || 'Ethio Bus')
+const busId    = computed(() => route.query.busId   || '')
 const price    = computed(() => route.query.price   || 300)
 const from     = computed(() => route.query.from    || 'negele-borena')
 const to       = computed(() => route.query.to      || 'hawassa')
@@ -115,32 +122,37 @@ const arrive   = computed(() => route.query.arrive  || '—')
 const routeId  = computed(() => route.query.routeId || '')
 const capacity = computed(() => Number(route.query.capacity) || 44)
 
-// Dates — SearchResultsView now sends both dateRaw (Gregorian) and dateDisplay (Ethiopian)
-const dateRaw     = computed(() => route.query.date     || new Date().toISOString().split('T')[0])
+const dateRaw     = computed(() => route.query.date        || new Date().toISOString().split('T')[0])
 const dateDisplay = computed(() => route.query.dateDisplay || formatEthiopian(new Date(dateRaw.value), store, t))
 const date        = dateDisplay
 
-// Route string uses display names so it matches what BookingView stores
 const fromDisplay = computed(() => t('cities.' + from.value) || from.value)
 const toDisplay   = computed(() => t('cities.' + to.value)   || to.value)
 
-// Get taken seats from live bookings (real-time from Supabase) + admin-blocked seats
+// Get taken seats from live bookings + admin-blocked seats.
+// Prefer the new structured columns (bus_id, travel_date, depart_time) when they
+// exist on a booking — fall back to the legacy route/date string match so old
+// bookings still block seats.
 const takenSeats = computed(() => {
   const routeStr   = `${fromDisplay.value} → ${toDisplay.value}`
-  // BookingView stores: dateRaw + ', ' + depart — match exactly so seats from a
-  // different departure time on the same day don't bleed through.
   const dateDepart = dateRaw.value + ', ' + depart.value
 
   const bookedSeats = store.bookings
-    .filter(b =>
-      b.status === 'Confirmed' &&
-      b.route === routeStr &&
-      b.date === dateDepart
-    )
+    .filter(b => {
+      if (b.status !== 'Confirmed') return false
+      // New bookings carry bus_id + travel_date + depart_time
+      if (b.bus_id && b.travel_date && b.depart_time) {
+        return b.bus_id === busId.value &&
+               b.travel_date === dateRaw.value &&
+               b.depart_time === depart.value
+      }
+      // Legacy bookings: match by route string + combined date string
+      return b.route === routeStr && b.date === dateDepart
+    })
     .map(b => Number(b.seat_number))
     .filter(Boolean)
 
-  const targetRoute = store.routes.find(r => r.id === routeId.value)
+  const targetRoute  = store.routes.find(r => r.id === routeId.value)
   const adminBlocked = targetRoute?.blockedSeats || []
 
   return [...new Set([...bookedSeats, ...adminBlocked])]
@@ -148,10 +160,9 @@ const takenSeats = computed(() => {
 
 const selectedSeat = ref(null)
 
-// Seat grid — driven by real bus capacity
 const allSeats = computed(() => Array.from({ length: capacity.value }, (_, i) => i + 1))
 const seatRows = computed(() => {
-  const rows = []
+  const rows  = []
   const seats = allSeats.value
   for (let i = 0; i < seats.length - (seats.length % 4 !== 0 ? seats.length % 4 : 0); i += 4) {
     rows.push(seats.slice(i, i + 4))
@@ -164,9 +175,15 @@ const lastSeat = computed(() => {
 })
 
 function seatClass(n) {
-  if (n === selectedSeat.value)         return 'bg-accent text-white border-accent shadow-sm scale-110 z-10'
-  if (takenSeats.value.includes(n))      return 'bg-primary-100 text-text-secondary opacity-60 cursor-not-allowed border border-border'
+  if (n === selectedSeat.value)      return 'bg-accent text-white border-accent shadow-sm scale-110 z-10'
+  if (takenSeats.value.includes(n))  return 'bg-primary-100 text-text-secondary opacity-60 cursor-not-allowed border border-border'
   return 'bg-card border border-border text-text-primary hover:border-text-primary hover:shadow-sm'
+}
+
+function seatAriaLabel(n) {
+  if (takenSeats.value.includes(n)) return `Seat ${n}, ${t('taken')}`
+  if (n === selectedSeat.value)     return `Seat ${n}, ${t('yours')}`
+  return `Seat ${n}, ${t('open')}`
 }
 
 function selectSeat(n) {

@@ -1,5 +1,19 @@
 import { reactive } from 'vue'
+import * as Sentry from '@sentry/vue'
 import { supabase } from './lib/supabase'
+import { toast } from './lib/toast'
+import { BOOKING_STATUS } from './lib/constants'
+
+// Centralised error reporter. `silent` skips the toast for best-effort calls
+// where the UI already handles the failure (e.g. addBooking returning null).
+function report(where, error, { silent = false, userMessage } = {}) {
+  if (!error) return
+  console.error(`[${where}]`, error)
+  try { Sentry.captureException(error, { tags: { where } }) } catch (_) {}
+  if (!silent) toast.error(userMessage || `Something went wrong (${where}). Please try again.`)
+}
+
+const BOOKINGS_PAGE_SIZE = 200
 
 export const store = reactive({
   user: null,
@@ -57,8 +71,15 @@ export const store = reactive({
       select_destination: 'Select destination',
       select_date: 'Select date',
       brand_name: 'Negele Borena',
+      securing_seat: 'Securing your seat…',
       terms_agreement: 'By booking you agree to the',
       terms_of_service: 'terms of service',
+      errors: {
+        name_invalid:    'Please enter your full name (letters only, 2–60 characters).',
+        phone_invalid:   'Please enter a valid Ethiopian phone number (09xxxxxxxx or +251xxxxxxxxx).',
+        booking_failed:  'Booking failed. Please try again.',
+        seat_just_taken: 'This seat was just taken by someone else. Please go back and choose another.',
+      },
       features_title: 'Fast, Reliable & Safe',
       feature_1_title: 'Instant Booking',
       feature_1_desc: 'Skip the long lines and book your seat from anywhere in under a minute.',
@@ -176,8 +197,15 @@ export const store = reactive({
       select_destination: 'መድረሻ ይምረጡ',
       select_date: 'ቀን ይምረጡ',
       brand_name: 'ነገሌ ቦረና',
+      securing_seat: 'ወንበርዎን በማስጠበቅ ላይ…',
       terms_agreement: 'ቦታ በመያዝዎ',
       terms_of_service: 'በአገልግሎት ውሎች',
+      errors: {
+        name_invalid:    'እባክዎ ሙሉ ስምዎን ያስገቡ (ፊደሎች ብቻ፣ 2–60 ቁምፊዎች)።',
+        phone_invalid:   'እባክዎ የኢትዮጵያ ስልክ ቁጥር ያስገቡ (09xxxxxxxx ወይም +251xxxxxxxxx)።',
+        booking_failed:  'ቦታ ማስያዝ አልተሳካም። እባክዎ እንደገና ይሞክሩ።',
+        seat_just_taken: 'ይህ ወንበር ለሌላ ሰው ተይዟል። እባክዎ ወደ ኋላ ተመልሰው ሌላ ወንበር ይምረጡ።',
+      },
       features_title: 'ፈጣን፣ አስተማማኝ እና ደህንነቱ የተጠበቀ',
       feature_1_title: 'ወዲያውኑ ቦታ መያዝ',
       feature_1_desc: 'ከረጅም ተርታ መጠበቅ ሳያስፈልግዎት ካሉበት ሆነው ወንበርዎን አሁኑኑ ይያዙ።',
@@ -295,8 +323,15 @@ export const store = reactive({
       select_destination: 'Iddoo gahuu filadhu',
       select_date: 'Guyyaa filadhu',
       brand_name: 'Nageellee Booraanaa',
+      securing_seat: 'Teessoo keessan nageenya eegaa jira…',
       terms_agreement: 'Galmeessuudhaan',
       terms_of_service: 'waliigaltee tajaajilaa',
+      errors: {
+        name_invalid:    'Maaloo maqaa guutuu keessan galchaa (qubee qofa, 2–60).',
+        phone_invalid:   'Maaloo lakkoofsa bilbila Itiyoophiyaa sirrii galchaa (09xxxxxxxx ykn +251xxxxxxxxx).',
+        booking_failed:  'Galmeessuu hin milkoofne. Maaloo irra deebi\'ii yaalaa.',
+        seat_just_taken: 'Teessoon kun namni biraa amma qabateera. Maaloo gara duubatti deebi\'aa teessoo biraa filadhaa.',
+      },
       features_title: 'Saffisaa, Amanamaa fi Nageenya',
       feature_1_title: 'Galmee Hatattamaa',
       feature_1_desc: 'Tarree jalaa ba\'uun bakka jirtan hundatti daqiiqaa tokko gadiitti teessoo qabadhaa.',
@@ -377,7 +412,7 @@ export const store = reactive({
   // Getters
   get totalRevenue() {
     return this.bookings
-      .filter(b => b.status === 'Confirmed' || b.status === 'Completed')
+      .filter(b => b.status === BOOKING_STATUS.CONFIRMED || b.status === BOOKING_STATUS.COMPLETED)
       .reduce((sum, b) => sum + Number(b.amount), 0)
   },
 
@@ -387,30 +422,41 @@ export const store = reactive({
 
   // Actions
   async init() {
-    // Check for existing session
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session) {
-      this.user = session.user
-      this.isAuthenticated = true
-      await this.fetchProfile(session.user.id)
-      if (this.userProfile?.role === 'driver') await this.fetchDriverBus()
-    }
-
-    await Promise.all([
-      this.fetchRoutes(),
-      this.fetchBuses(),
-      this.fetchBookings(),
-      this.fetchDrivers()
+    // Guard against a dead Supabase/network with a hard timeout. Whatever
+    // loaded successfully stays; whatever didn't will retry on user action.
+    const withTimeout = (p, ms = 5000) => Promise.race([
+      p,
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms)),
     ])
 
-    this.isInitialized = true
+    try {
+      const { data: { session } } = await withTimeout(supabase.auth.getSession())
+      if (session) {
+        this.user = session.user
+        this.isAuthenticated = true
+        await this.fetchProfile(session.user.id)
+        if (this.userProfile?.role === 'driver') await this.fetchDriverBus()
+      }
 
-    // Enable Realtime Subscriptions
+      await withTimeout(Promise.all([
+        this.fetchRoutes(),
+        this.fetchBuses(),
+        this.fetchBookings(),
+        this.fetchDrivers(),
+      ]))
+    } catch (err) {
+      report('store.init', err, { userMessage: 'Could not reach server. Showing offline data.' })
+    } finally {
+      this.isInitialized = true
+    }
+
+    // Realtime: apply payloads surgically instead of refetching the whole
+    // table on every change.
     supabase
       .channel('schema-db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => this.fetchBookings())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'routes' }, () => this.fetchRoutes())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'buses' }, () => this.fetchBuses())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, (payload) => this._applyRealtime('bookings', payload))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'routes'   }, (payload) => this._applyRealtime('routes',   payload))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'buses'    }, (payload) => this._applyRealtime('buses',    payload))
       .subscribe()
 
     supabase.auth.onAuthStateChange(async (event, session) => {
@@ -419,8 +465,8 @@ export const store = reactive({
         this.isAuthenticated = true
         await this.fetchProfile(session.user.id)
         if (this.userProfile?.role === 'driver') await this.fetchDriverBus()
-        // Re-fetch drivers now that we're authenticated (RLS requires auth to read profiles)
-        await this.fetchDrivers().catch(() => {})
+        // Re-fetch drivers now that we're authenticated (RLS requires auth to read profiles).
+        try { await this.fetchDrivers() } catch (e) { report('fetchDrivers.authChange', e, { silent: true }) }
       } else {
         this.user = null
         this.userProfile = null
@@ -431,6 +477,31 @@ export const store = reactive({
     })
   },
 
+  // Apply a Supabase realtime change surgically. Falls back to full refetch
+  // only if the payload can't be applied locally.
+  _applyRealtime(table, payload) {
+    const { eventType, new: row, old } = payload
+    const mapRoute = (r) => ({ ...r, from: r.from_city, to: r.to_city, blockedSeats: r.blocked_seats })
+    const target = {
+      bookings: this.bookings,
+      routes:   this.routes,
+      buses:    this.buses,
+    }[table]
+    if (!target) return
+    const transform = table === 'routes' ? mapRoute : (x) => x
+
+    if (eventType === 'INSERT') {
+      if (!target.find(x => x.id === row.id)) target.unshift(transform(row))
+    } else if (eventType === 'UPDATE') {
+      const i = target.findIndex(x => x.id === row.id)
+      if (i !== -1) target[i] = transform(row)
+      else target.unshift(transform(row))
+    } else if (eventType === 'DELETE') {
+      const i = target.findIndex(x => x.id === old.id)
+      if (i !== -1) target.splice(i, 1)
+    }
+  },
+
   async fetchDriverBus() {
     const { data: busData, error: busError } = await supabase
       .from('buses')
@@ -439,28 +510,21 @@ export const store = reactive({
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
-    
-    if (busError) {
-      console.error('Error fetching driver bus:', busError)
-      return
-    }
+
+    if (busError) return report('fetchDriverBus', busError, { silent: true })
 
     if (busData) {
-      // 2. If bus has a route_id, pull the route data separately
-      // This bypasses the foreign key relationship error (PGRST200)
+      // If bus has a route_id, pull the route data separately to bypass the
+      // foreign-key relationship error (PGRST200).
       if (busData.route_id) {
-        const { data: routeData, error: routeError } = await supabase
+        const { data: routeData } = await supabase
           .from('routes')
           .select('*')
           .eq('id', busData.route_id)
           .maybeSingle()
-        
+
         if (routeData) {
-          busData.routes = {
-            ...routeData,
-            from: routeData.from_city,
-            to: routeData.to_city
-          }
+          busData.routes = { ...routeData, from: routeData.from_city, to: routeData.to_city }
         }
       }
       this.driverBus = busData
@@ -475,13 +539,13 @@ export const store = reactive({
       .order('full_name', { ascending: true })
 
     if (data) this.drivers = data
-    if (error) console.error('[fetchDrivers] Error:', error)
+    if (error) report('fetchDrivers', error, { silent: true })
   },
 
   async fetchProfile(userId) {
     const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single()
     if (data) this.userProfile = data
-    if (error) console.error('Error fetching profile:', error)
+    if (error) report('fetchProfile', error, { silent: true })
   },
 
   async signIn(email, password) {
@@ -513,7 +577,8 @@ export const store = reactive({
   },
 
   async signOut() {
-    await supabase.auth.signOut().catch(() => {})
+    const { error } = await supabase.auth.signOut()
+    if (error) report('signOut', error, { silent: true })
     this.user = null
     this.userProfile = null
     this.driverBus = null
@@ -521,20 +586,31 @@ export const store = reactive({
   },
 
   async fetchRoutes() {
-    const { data } = await supabase.from('routes').select('*').order('created_at', { ascending: true })
+    const { data, error } = await supabase.from('routes').select('*').order('created_at', { ascending: true })
+    if (error) return report('fetchRoutes', error, { silent: true })
     if (data) this.routes = data.map(r => ({ ...r, from: r.from_city, to: r.to_city, blockedSeats: r.blocked_seats }))
   },
 
   async fetchBuses() {
-    const { data } = await supabase.from('buses').select('*').order('id', { ascending: true })
+    const { data, error } = await supabase.from('buses').select('*').order('id', { ascending: true })
+    if (error) return report('fetchBuses', error, { silent: true })
     if (data) this.buses = data
   },
 
-  async fetchBookings() {
-    const { data } = await supabase.from('bookings').select('*').order('created_at', { ascending: false })
+  // Paginated to prevent pulling the entire bookings table into memory.
+  // Admin dashboard and driver manifest only need recent rows.
+  async fetchBookings({ limit = BOOKINGS_PAGE_SIZE, offset = 0 } = {}) {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+    if (error) return report('fetchBookings', error, { silent: true })
     if (data) this.bookings = data
   },
 
+  // Returns { data, error } so the caller can distinguish "seat taken"
+  // (23505 unique violation) from generic failures.
   async addBooking(bookingData) {
     const { data, error } = await supabase
       .from('bookings')
@@ -542,43 +618,39 @@ export const store = reactive({
       .select()
       .single()
     if (error) {
-      console.error('Error adding booking:', error)
-      return null
+      // 23505 = unique_violation: the seat was taken between UI check and insert.
+      if (error.code !== '23505') report('addBooking', error, { silent: true })
+      return { data: null, error }
     }
-    await this.fetchBookings()
-    return data
+    // Push the fresh row locally; realtime will no-op on its echo.
+    if (!this.bookings.find(b => b.id === data.id)) this.bookings.unshift(data)
+    return { data, error: null }
   },
 
   async cancelBooking(id) {
     const b = this.bookings.find(b => b.id === id)
     if (!b) return
     const prev = b.status
-    b.status = 'Canceled'
-    const { error } = await supabase.from('bookings').update({ status: 'Canceled' }).eq('id', id)
-    if (error) { b.status = prev; console.error('Error canceling booking:', error) }
+    b.status = BOOKING_STATUS.CANCELED
+    const { error } = await supabase.from('bookings').update({ status: BOOKING_STATUS.CANCELED }).eq('id', id)
+    if (error) { b.status = prev; report('cancelBooking', error) }
   },
 
   async confirmBooking(id) {
     const b = this.bookings.find(b => b.id === id)
     if (!b) return
     const prev = b.status
-    b.status = 'Confirmed'
-    const { error } = await supabase.from('bookings').update({ status: 'Confirmed' }).eq('id', id)
-    if (error) { b.status = prev; console.error('Error confirming booking:', error) }
+    b.status = BOOKING_STATUS.CONFIRMED
+    const { error } = await supabase.from('bookings').update({ status: BOOKING_STATUS.CONFIRMED }).eq('id', id)
+    if (error) { b.status = prev; report('confirmBooking', error) }
   },
 
   async toggleBoarding(id) {
     const b = this.bookings.find(b => b.id === id)
-    if (b) {
-      // Optimistic update — reflect change immediately
-      b.boarded = !b.boarded
-      const { error } = await supabase.from('bookings').update({ boarded: b.boarded }).eq('id', id)
-      if (error) {
-        // Revert on failure
-        b.boarded = !b.boarded
-        console.error('Error toggling boarding:', error)
-      }
-    }
+    if (!b) return
+    b.boarded = !b.boarded
+    const { error } = await supabase.from('bookings').update({ boarded: b.boarded }).eq('id', id)
+    if (error) { b.boarded = !b.boarded; report('toggleBoarding', error) }
   },
 
   async addRoute(routeData) {
@@ -592,36 +664,34 @@ export const store = reactive({
       blocked_seats: []
     }
     const { error } = await supabase.from('routes').insert([dbData])
-    if (error) console.error('Error adding route:', error)
+    if (error) report('addRoute', error)
     else await this.fetchRoutes()
   },
 
   async toggleRouteStatus(id) {
     const r = this.routes.find(r => r.id === id)
-    if (r) {
-      const prev = r.active
-      r.active = !r.active
-      const { error } = await supabase.from('routes').update({ active: r.active }).eq('id', id)
-      if (error) { r.active = prev; console.error('Error toggling route:', error) }
-    }
+    if (!r) return
+    const prev = r.active
+    r.active = !r.active
+    const { error } = await supabase.from('routes').update({ active: r.active }).eq('id', id)
+    if (error) { r.active = prev; report('toggleRouteStatus', error) }
   },
 
   async toggleSeat(routeId, seatNumber) {
     const r = this.routes.find(r => r.id === routeId)
-    if (r) {
-      let seats = [...r.blockedSeats]
-      const idx = seats.indexOf(seatNumber)
-      if (idx > -1) seats.splice(idx, 1)
-      else seats.push(seatNumber)
-      
-      const { error } = await supabase.from('routes').update({ blocked_seats: seats }).eq('id', routeId)
-      if (error) console.error('Error toggling seat:', error)
-    }
+    if (!r) return
+    const seats = [...r.blockedSeats]
+    const idx = seats.indexOf(seatNumber)
+    if (idx > -1) seats.splice(idx, 1)
+    else seats.push(seatNumber)
+
+    const { error } = await supabase.from('routes').update({ blocked_seats: seats }).eq('id', routeId)
+    if (error) report('toggleSeat', error)
   },
 
   async addBus(busData) {
     const { error } = await supabase.from('buses').insert([busData])
-    if (error) console.error('Error adding bus:', error)
+    if (error) report('addBus', error)
     else await this.fetchBuses()
   },
 
@@ -634,47 +704,50 @@ export const store = reactive({
       duration: routeData.duration || '---',
     }
     const { error } = await supabase.from('routes').update(dbData).eq('id', id)
-    if (error) console.error('Error updating route:', error)
+    if (error) report('updateRoute', error)
     else await this.fetchRoutes()
   },
 
   async deleteRoute(id) {
     const { error } = await supabase.from('routes').delete().eq('id', id)
-    if (error) console.error('Error deleting route:', error)
+    if (error) report('deleteRoute', error)
     else await this.fetchRoutes()
   },
 
   async deleteBus(id) {
     const { error } = await supabase.from('buses').delete().eq('id', id)
-    if (error) console.error('Error deleting bus:', error)
+    if (error) report('deleteBus', error)
     else await this.fetchBuses()
   },
 
   async updateBusStatus(id, newStatus) {
     // Optimistic update — reflect change immediately in UI
-    if (this.driverBus?.id === id) {
-      this.driverBus = { ...this.driverBus, status: newStatus }
-    }
+    const prevDriverBus = this.driverBus
+    if (this.driverBus?.id === id) this.driverBus = { ...this.driverBus, status: newStatus }
     const idx = this.buses.findIndex(b => b.id === id)
+    const prev = idx !== -1 ? this.buses[idx] : null
     if (idx !== -1) this.buses[idx] = { ...this.buses[idx], status: newStatus }
 
     const { error } = await supabase.from('buses').update({ status: newStatus }).eq('id', id)
-    if (error) console.error('Error updating bus status:', error)
+    if (error) {
+      this.driverBus = prevDriverBus
+      if (idx !== -1 && prev) this.buses[idx] = prev
+      report('updateBusStatus', error)
+    }
   },
 
   async assignRouteToBus(busId, routeId) {
-    // e.target.value is always a string; empty string means "Unassigned" → send null
+    // e.target.value is always a string; empty string means "Unassigned" → send null.
     const value = routeId || null
     const { error } = await supabase.from('buses').update({ route_id: value }).eq('id', busId)
-    if (error) console.error('Error assigning route to bus:', error)
+    if (error) report('assignRouteToBus', error)
     else await this.fetchBuses()
   },
 
   async assignDriverToBus(busId, driverId) {
-    // e.target.value is always a string; empty string means "Unassigned" → send null
     const value = driverId || null
     const { error } = await supabase.from('buses').update({ driver_id: value }).eq('id', busId)
-    if (error) console.error('Error assigning driver to bus:', error)
+    if (error) report('assignDriverToBus', error)
     else await this.fetchBuses()
   },
 
