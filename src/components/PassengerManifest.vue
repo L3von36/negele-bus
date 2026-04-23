@@ -33,7 +33,7 @@
            All Trips
          </button>
          <button 
-           v-for="r in store.routes" :key="r.id"
+           v-for="r in routes" :key="r.id"
            @click="routeFilter = r.from_city + ' → ' + r.to_city"
            :class="routeFilter === r.from_city + ' → ' + r.to_city ? 'bg-accent text-white border-accent' : 'bg-white/5 text-white/40 border-white/10'"
            class="px-4 py-1.5 rounded-full border text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap"
@@ -50,7 +50,7 @@
         :style="{ animationDelay: (index * 50) + 'ms' }"
       >
         <div 
-          @click="store.toggleBoarding(booking.id)"
+          @click="toggleBoardingMutation.mutate({ id: booking.id, boarded: !booking.boarded })"
           :class="[
             booking.boarded 
               ? 'bg-green-500/[0.08] border-green-500/20 shadow-lg shadow-green-500/5' 
@@ -114,7 +114,8 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { store, t } from '../store.js'
+import { useUiStore } from '../stores/ui'
+import { useBookings, useRoutes, useToggleBoarding } from '../lib/queries'
 
 const props = defineProps({
   showStats: { type: Boolean, default: true },
@@ -123,10 +124,19 @@ const props = defineProps({
   compact: { type: Boolean, default: false }
 })
 
+const ui = useUiStore()
+const { t } = ui
+const { data: bookingsData } = useBookings()
+const { data: routesData } = useRoutes()
+const toggleBoardingMutation = useToggleBoarding()
+
 const searchQuery = ref('')
 const debouncedQuery = ref('')
 const routeFilter = ref(props.initialRoute)
 let searchTimer = null
+
+const routes = computed(() => routesData.value || [])
+const bookings = computed(() => bookingsData.value || [])
 
 watch(() => props.initialRoute, (newVal) => {
   routeFilter.value = newVal
@@ -147,7 +157,7 @@ function normalizedTel(phone) {
 }
 
 const manifestList = computed(() => {
-  let list = store.bookings.filter(b => b.status === 'Confirmed')
+  let list = bookings.value.filter(b => b.status === 'Confirmed')
   if (routeFilter.value) list = list.filter(b => b.route === routeFilter.value)
   const q = debouncedQuery.value.toLowerCase().replace(/[\s\-]/g, '')
   if (q) {
@@ -162,14 +172,15 @@ const manifestList = computed(() => {
 
 const stats = computed(() => {
   const relevanceList = routeFilter.value 
-    ? store.bookings.filter(b => b.status === 'Confirmed' && b.route === routeFilter.value)
-    : store.bookings.filter(b => b.status === 'Confirmed')
+    ? bookings.value.filter(b => b.status === 'Confirmed' && b.route === routeFilter.value)
+    : bookings.value.filter(b => b.status === 'Confirmed')
   const total = relevanceList.length
   const boarded = relevanceList.filter(b => b.boarded).length
   const pending = total - boarded
   const percentage = total === 0 ? 0 : Math.round((boarded / total) * 100)
   return { total, boarded, pending, percentage }
 })
+
 </script>
 
 <style scoped>

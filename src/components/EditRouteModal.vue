@@ -64,7 +64,7 @@
 
 <script setup>
 import { ref, reactive, watch } from 'vue'
-import { store } from '../store.js'
+import { useUpdateRoute } from '../lib/queries'
 
 const props = defineProps({
   isOpen: Boolean,
@@ -75,6 +75,7 @@ const emit = defineEmits(['close'])
 
 const isSaving = ref(false)
 const formError = ref('')
+const updateRouteMutation = useUpdateRoute()
 
 const formData = reactive({
   id: '',
@@ -113,10 +114,16 @@ async function handleSave() {
 
   isSaving.value = true
   try {
-    await store.updateRoute(formData.id, { ...formData, from, to, price })
+    await updateRouteMutation.mutateAsync({ 
+      id: formData.id, 
+      routeData: { ...formData, from, to, price } 
+    })
     emit('close')
+  } catch (error) {
+    formError.value = 'Failed to update route. Please try again.'
   } finally {
     isSaving.value = false
   }
 }
+
 </script>

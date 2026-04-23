@@ -12,7 +12,7 @@
           </div>
         </div>
         <div class="flex items-center gap-3">
-          <span class="hidden sm:block text-white/40 text-xs">{{ store.userProfile?.full_name || 'Inspector' }}</span>
+          <span class="hidden sm:block text-white/40 text-xs">{{ ui.userProfile?.full_name || 'Inspector' }}</span>
           <button @click="handleSignOut" class="h-9 px-4 flex items-center gap-2 text-white/40 hover:text-white bg-white/5 border border-white/10 rounded-xl transition-colors text-[10px] font-medium uppercase tracking-wide">
             Sign Out
           </button>
@@ -26,19 +26,19 @@
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="bg-card p-5 rounded-xl border border-border shadow-soft">
           <p class="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">Total Buses</p>
-          <p class="text-3xl font-bold text-text-primary">{{ store.buses.length }}</p>
+          <p class="text-3xl font-bold text-text-primary">{{ buses.length }}</p>
         </div>
         <div class="bg-card p-5 rounded-xl border border-border shadow-soft">
           <p class="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">Active</p>
-          <p class="text-3xl font-bold text-green-600">{{ activeBuses }}</p>
+          <p class="text-3xl font-bold text-green-600">{{ activeBusesCount }}</p>
         </div>
         <div class="bg-yellow-50 border border-yellow-200 p-5 rounded-xl shadow-soft">
           <p class="text-xs font-semibold text-yellow-700 uppercase tracking-wider mb-1">In Maintenance</p>
-          <p class="text-3xl font-bold text-yellow-700">{{ maintenanceBuses }}</p>
+          <p class="text-3xl font-bold text-yellow-700">{{ maintenanceBusesCount }}</p>
         </div>
         <div class="bg-card p-5 rounded-xl border border-border shadow-soft">
           <p class="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">Drivers Registered</p>
-          <p class="text-3xl font-bold text-text-primary">{{ store.drivers.length }}</p>
+          <p class="text-3xl font-bold text-text-primary">{{ drivers.length }}</p>
         </div>
       </div>
 
@@ -117,10 +117,10 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-border">
-              <tr v-if="store.drivers.length === 0">
+              <tr v-if="drivers.length === 0">
                 <td colspan="4" class="px-6 py-12 text-center text-sm text-text-secondary">No drivers registered.</td>
               </tr>
-              <tr v-for="d in store.drivers" :key="d.id" class="hover:bg-primary-100/20 transition-colors">
+              <tr v-for="d in drivers" :key="d.id" class="hover:bg-primary-100/20 transition-colors">
                 <td class="px-6 py-4 text-sm font-bold text-text-primary">{{ d.full_name || '—' }}</td>
                 <td class="px-6 py-4 text-sm text-text-secondary">{{ d.phone || '—' }}</td>
                 <td class="px-6 py-4 text-sm text-text-secondary">{{ assignedBusPlate(d.id) }}</td>
@@ -141,33 +141,43 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { store } from '../store.js'
+import { useUiStore } from '../stores/ui'
+import { useBuses, useDrivers, useRoutes } from '../lib/queries'
 
 const router = useRouter()
+const ui = useUiStore()
 const fleetFilter = ref('All')
 
-const activeBuses      = computed(() => store.buses.filter(b => b.status !== 'Maintenance').length)
-const maintenanceBuses = computed(() => store.buses.filter(b => b.status === 'Maintenance').length)
+const { data: busesData } = useBuses()
+const { data: driversData } = useDrivers()
+const { data: routesData } = useRoutes()
+
+const buses = computed(() => busesData.value || [])
+const drivers = computed(() => driversData.value || [])
+const routes = computed(() => routesData.value || [])
+
+const activeBusesCount      = computed(() => buses.value.filter(b => b.status !== 'Maintenance').length)
+const maintenanceBusesCount = computed(() => buses.value.filter(b => b.status === 'Maintenance').length)
 
 const filteredBuses = computed(() => {
-  if (fleetFilter.value === 'All') return store.buses
-  return store.buses.filter(b => b.status === fleetFilter.value)
+  if (fleetFilter.value === 'All') return buses.value
+  return buses.value.filter(b => b.status === fleetFilter.value)
 })
 
 function routeName(routeId) {
   if (!routeId) return '—'
-  const r = store.routes.find(r => r.id === routeId)
+  const r = routes.value.find(r => r.id === routeId)
   return r ? `${r.from} → ${r.to}` : '—'
 }
 
 function driverName(driverId) {
   if (!driverId) return '—'
-  const d = store.drivers.find(d => d.id === driverId)
+  const d = drivers.value.find(d => d.id === driverId)
   return d?.full_name || d?.email || '—'
 }
 
 function assignedBusPlate(driverId) {
-  const bus = store.buses.find(b => b.driver_id === driverId)
+  const bus = buses.value.find(b => b.driver_id === driverId)
   return bus?.plate || null
 }
 
@@ -179,7 +189,8 @@ function statusClass(status) {
 }
 
 async function handleSignOut() {
-  await store.signOut()
+  await ui.signOut()
   router.push('/login')
 }
+
 </script>

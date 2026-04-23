@@ -4,7 +4,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
        <div class="bg-card p-6 rounded-2xl border border-border shadow-soft">
           <p class="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Total Revenue</p>
-          <h3 class="text-3xl font-black text-text-primary tracking-tight">{{ store.totalRevenue.toLocaleString() }} <span class="text-sm font-bold text-text-secondary ml-1">ETB</span></h3>
+          <h3 class="text-3xl font-black text-text-primary tracking-tight">{{ totalRevenue.toLocaleString() }} <span class="text-sm font-bold text-text-secondary ml-1">ETB</span></h3>
           <p class="text-xs text-green-600 font-bold mt-2 flex items-center">
             <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"/></svg>
             Live from Supabase
@@ -12,7 +12,7 @@
        </div>
        <div class="bg-card p-6 rounded-2xl border border-border shadow-soft">
           <p class="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Total Bookings</p>
-          <h3 class="text-3xl font-black text-text-primary tracking-tight">{{ store.bookings.length }}</h3>
+          <h3 class="text-3xl font-black text-text-primary tracking-tight">{{ bookings.length }}</h3>
           <p class="text-xs text-text-secondary font-bold mt-2">Active confirmations</p>
        </div>
        <div class="bg-card p-6 rounded-2xl border border-border shadow-soft">
@@ -75,7 +75,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { store } from '../store.js'
+import { useBookings, useBuses } from '../lib/queries'
 import { currentEthiopian } from '../lib/ethiopianCalendar.js'
 import {
   Chart as ChartJS,
@@ -90,26 +90,37 @@ import { Bar } from 'vue-chartjs'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
+const { data: bookingsData } = useBookings()
+const { data: busesData } = useBuses()
+
+const bookings = computed(() => bookingsData.value || [])
+const buses = computed(() => busesData.value || [])
+
+const confirmedBookings = computed(() => bookings.value.filter(b => b.status === 'Confirmed'))
+
+const totalRevenue = computed(() => {
+  return confirmedBookings.value.reduce((sum, b) => sum + Number(b.amount || 0), 0)
+})
+
 // Analytics Logic
 const avgTicketValue = computed(() => {
-  if (store.bookings.length === 0) return 0
-  return Math.round(store.totalRevenue / store.bookings.length)
+  if (confirmedBookings.value.length === 0) return 0
+  return Math.round(totalRevenue.value / confirmedBookings.value.length)
 })
 
 const occupancyRate = computed(() => {
   // Rough occupancy calculation: (Bookings / Total possible seats across active buses)
-  const confirmed = store.bookings.filter(b => b.status === 'Confirmed').length
-  const totalCapacity = store.buses.filter(b => b.status === 'Active').reduce((sum, b) => sum + b.capacity, 0)
+  const confirmedCount = confirmedBookings.value.length
+  const totalCapacity = buses.value.filter(b => b.status === 'Active').reduce((sum, b) => sum + b.capacity, 0)
   if (totalCapacity === 0) return 0
-  return Math.round((confirmed / totalCapacity) * 100)
+  return Math.round((confirmedCount / totalCapacity) * 100)
 })
 
 const routeStats = computed(() => {
   const stats = {}
-  store.bookings.forEach(b => {
-    if (b.status !== 'Confirmed') return
+  confirmedBookings.value.forEach(b => {
     if (!stats[b.route]) stats[b.route] = { revenue: 0, count: 0 }
-    stats[b.route].revenue += Number(b.amount)
+    stats[b.route].revenue += Number(b.amount || 0)
     stats[b.route].count += 1
   })
   return Object.entries(stats).map(([name, data]) => ({ name, ...data }))
@@ -183,6 +194,7 @@ function exportReport() {
   link.click()
   document.body.removeChild(link)
 }
+
 </script>
 
 <style scoped>

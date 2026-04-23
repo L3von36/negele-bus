@@ -75,13 +75,15 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
-import { t, store } from '../store.js'
+import { ref, computed, watch } from 'vue'
+import { useUiStore } from '../stores/ui'
 import { toEthiopianDate, toGregorianDate, currentEthiopian } from '../lib/ethiopianCalendar.js'
 
 const props = defineProps(['modelValue', 'placeholder'])
 const emit = defineEmits(['update:modelValue'])
 
+const ui = useUiStore()
+const { t } = ui
 const isOpen = ref(false)
 const todayEt = currentEthiopian()
 
@@ -156,6 +158,7 @@ function setToday() {
   viewYear.value = todayEt.year
   selectDay(todayEt.day)
 }
+
 </script>
 
 <style scoped>

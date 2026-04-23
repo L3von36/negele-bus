@@ -14,8 +14,10 @@
   "dependencies": {
     "@sentry/vue": "^10.47.0",
     "@supabase/supabase-js": "^2.102.1",
+    "@tanstack/vue-query": "^5.100.1",
     "chart.js": "^4.5.1",
     "html5-qrcode": "^2.3.8",
+    "pinia": "^3.0.4",
     "posthog-js": "^1.365.4",
     "qrcode.vue": "^3.8.1",
     "vite-plugin-sitemap": "^0.8.2",

@@ -126,7 +126,8 @@
 <script setup>
 import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { store, t } from '../store.js'
+import { useUiStore } from '../stores/ui'
+import { useAddBooking } from '../lib/queries'
 import { useMeta } from '../lib/useMeta.js'
 import MainHeader from '../components/MainHeader.vue'
 import AppButton from '../components/AppButton.vue'
@@ -136,6 +137,9 @@ import { validatePhone, validateName, sanitize, BOOKING_STATUS } from '../lib/co
 const router = useRouter()
 const route  = useRoute()
 const { setMeta } = useMeta()
+const ui = useUiStore()
+const { t } = ui
+const addBookingMutation = useAddBooking()
 
 onMounted(() => {
   setMeta('Secure Booking', 'Finalize your bus ticket booking. Enter passenger details to secure your seat instantly.')
@@ -151,7 +155,7 @@ const depart  = computed(() => route.query.depart  || '06:00')
 const seat    = computed(() => route.query.seat    || 1)
 
 const dateRaw     = computed(() => route.query.date        || new Date().toISOString().split('T')[0])
-const dateDisplay = computed(() => route.query.dateDisplay || formatEthiopian(new Date(dateRaw.value), store, t))
+const dateDisplay = computed(() => route.query.dateDisplay || formatEthiopian(new Date(dateRaw.value), ui, t))
 
 const fullName     = ref('')
 const phone        = ref('')
@@ -176,44 +180,43 @@ async function confirmBooking() {
   const toDisplay   = t('cities.' + to.value)   || to.value
   const routeStr    = `${fromDisplay} → ${toDisplay}`
 
-  const { data: booking, error } = await store.addBooking({
-    // id omitted — DB generates via gen_random_uuid() default
-    name:        sanitize(fullName.value),
-    phone:       sanitize(phone.value),
-    route:       routeStr,
-    route_id:    routeId.value || null,
-    bus_id:      busId.value   || null,
-    travel_date: dateRaw.value,
-    depart_time: depart.value,
-    date:        dateRaw.value + ', ' + depart.value, // legacy column; keep until DB migration applied
-    amount:      Number(price.value),
-    seat_number: Number(seat.value),
-    status:      BOOKING_STATUS.CONFIRMED,
-    boarded:     false,
-  })
+  try {
+    const booking = await addBookingMutation.mutateAsync({
+      name:        sanitize(fullName.value),
+      phone:       sanitize(phone.value),
+      route:       routeStr,
+      route_id:    routeId.value || null,
+      bus_id:      busId.value   || null,
+      travel_date: dateRaw.value,
+      depart_time: depart.value,
+      date:        dateRaw.value + ', ' + depart.value, // legacy column
+      amount:      Number(price.value),
+      seat_number: Number(seat.value),
+      status:      BOOKING_STATUS.CONFIRMED,
+      boarded:     false,
+    })
 
-  isBooking.value = false
-
-  if (error) {
+    router.push({
+      path: '/confirmation',
+      query: {
+        bus: busName.value, price: price.value,
+        from: from.value, to: to.value,
+        depart: depart.value, seat: seat.value,
+        date: dateRaw.value, dateDisplay: dateDisplay.value,
+        name: fullName.value, phone: phone.value,
+        id: booking.id,
+      }
+    })
+  } catch (error) {
     // 23505 = unique_violation: seat was grabbed between UI check and insert
     bookingError.value = error.code === '23505'
       ? t('errors.seat_just_taken')
       : t('errors.booking_failed')
-    return
+  } finally {
+    isBooking.value = false
   }
-
-  router.push({
-    path: '/confirmation',
-    query: {
-      bus: busName.value, price: price.value,
-      from: from.value, to: to.value,
-      depart: depart.value, seat: seat.value,
-      date: dateRaw.value, dateDisplay: dateDisplay.value,
-      name: fullName.value, phone: phone.value,
-      id: booking.id,
-    }
-  })
 }
+
 </script>
 
 <style scoped></style>

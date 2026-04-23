@@ -16,7 +16,7 @@
         <div class="flex items-center gap-3">
           <div class="px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl flex items-center gap-2">
             <div class="w-1.5 h-1.5 rounded-full bg-green-400"></div>
-            <span class="text-white/50 text-[10px] font-medium">{{ store.userProfile?.full_name || 'Station Master' }}</span>
+            <span class="text-white/50 text-[10px] font-medium">{{ ui.userProfile?.full_name || 'Station Master' }}</span>
           </div>
           <button @click="handleSignOut" class="h-9 px-4 flex items-center gap-2 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-colors">
             <span class="text-[10px] font-medium uppercase tracking-wide">Sign Out</span>
@@ -111,23 +111,31 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { store } from '../store.js'
+import { useUiStore } from '../stores/ui'
+import { useBuses, useBookings, useRoutes, useToggleBoarding } from '../lib/queries'
 import { toast } from '../lib/toast.js'
 import PassengerManifest from '../components/PassengerManifest.vue'
 import QRScannerModal from '../components/QRScannerModal.vue'
 
 const router = useRouter()
+const ui = useUiStore()
 const isScannerOpen = ref(false)
 const scanResult = ref(null)
 
-const activeBuses = computed(() => store.buses.filter(b => b.status !== 'Maintenance'))
+const { data: busesData } = useBuses()
+const { data: bookingsData } = useBookings()
+const { data: routesData } = useRoutes()
+const toggleBoardingMutation = useToggleBoarding()
 
-const todayConfirmed = computed(() => store.bookings.filter(b => b.status === 'Confirmed').length)
-const todayBoarded   = computed(() => store.bookings.filter(b => b.status === 'Confirmed' && b.boarded).length)
+const activeBuses = computed(() => (busesData.value || []).filter(b => b.status !== 'Maintenance'))
+
+const todayConfirmed = computed(() => (bookingsData.value || []).filter(b => b.status === 'Confirmed').length)
+const todayBoarded   = computed(() => (bookingsData.value || []).filter(b => b.status === 'Confirmed' && b.boarded).length)
 const todayPending   = computed(() => todayConfirmed.value - todayBoarded.value)
 
 function busRoute(bus) {
-  const route = store.routes.find(r => r.id === bus.route_id)
+  const routes = routesData.value || []
+  const route = routes.find(r => r.id === bus.route_id)
   return route ? `${route.from} → ${route.to}` : '—'
 }
 
@@ -139,7 +147,8 @@ function busStatusClass(status) {
 }
 
 function onTicketScanned(rawId) {
-  const booking = store.bookings.find(b => b.id === rawId)
+  const bookings = bookingsData.value || []
+  const booking = bookings.find(b => b.id === rawId)
   if (!booking) {
     scanResult.value = { type: 'error', message: 'Ticket not found in system' }
     toast.error('Ticket not found')
@@ -157,14 +166,15 @@ function onTicketScanned(rawId) {
     toast.info(msg)
     return
   }
-  store.toggleBoarding(rawId)
+  toggleBoardingMutation.mutate({ id: rawId, boarded: true })
   const msg = `${booking.name} — Seat ${booking.seat_number}`
   scanResult.value = { type: 'success', message: msg }
   toast.success(`Boarded: ${msg}`)
 }
 
 async function handleSignOut() {
-  await store.signOut()
+  await ui.signOut()
   router.push('/login')
 }
+
 </script>

@@ -43,13 +43,13 @@ export function toGregorianDate(year, month, day) {
 /**
  * Formats an Ethiopian date based on the active language.
  */
-export function formatEthiopian(date, store, t) {
+export function formatEthiopian(date, t) {
   if (!date) return ''
   const et = toEthiopianDate(new Date(date))
   
-  // Try to find localized month name in store.js
+  // Try to find localized month name
   const monthKey = `onboarding.month_${et.month}`
-  const monthName = t(monthKey) || ET_MONTHS_EN[et.month - 1]
+  const monthName = t ? t(monthKey) : ET_MONTHS_EN[et.month - 1]
   
   return `${monthName} ${et.day}, ${et.year}`
 }
@@ -64,12 +64,13 @@ export function currentEthiopian() {
 /**
  * Returns an array of formatted Ethiopian dates for the last N days (for charts).
  */
-export function getRecentEthiopianDates(days, store, t) {
+export function getRecentEthiopianDates(days, t) {
   const dates = []
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date()
     d.setDate(d.getDate() - i)
-    dates.push(formatEthiopian(d, store, t))
+    dates.push(formatEthiopian(d, t))
   }
   return dates
 }
+

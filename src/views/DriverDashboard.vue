@@ -15,15 +15,15 @@
         </div>
 
         <div class="flex items-center gap-3">
-          <div v-if="store.userProfile?.full_name" class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl">
+          <div v-if="ui.userProfile?.full_name" class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl">
             <div class="w-5 h-5 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
-              <span class="text-accent text-[8px] font-bold">{{ store.userProfile.full_name.charAt(0) }}</span>
+              <span class="text-accent text-[8px] font-bold">{{ ui.userProfile.full_name.charAt(0) }}</span>
             </div>
-            <span class="text-white/50 text-[10px] font-medium">{{ store.userProfile.full_name }}</span>
+            <span class="text-white/50 text-[10px] font-medium">{{ ui.userProfile.full_name }}</span>
           </div>
           <div class="px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl flex items-center gap-2">
             <div class="w-1.5 h-1.5 rounded-full bg-green-400"></div>
-            <span class="text-white/50 text-[10px] font-medium uppercase tracking-wide">{{ formatEthiopian(new Date(), store, t) }}</span>
+            <span class="text-white/50 text-[10px] font-medium uppercase tracking-wide">{{ formatEthiopian(new Date(), ui, t) }}</span>
           </div>
           <button @click="handleSignOut" class="h-9 px-4 flex items-center justify-center gap-2 text-white/40 hover:text-white transition-colors bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl">
             <span class="text-[10px] font-medium uppercase tracking-wide">Sign Out</span>
@@ -34,7 +34,7 @@
     </nav>
 
     <!-- Loading State -->
-    <div v-if="!store.isInitialized" class="max-w-7xl mx-auto px-6 py-8">
+    <div v-if="isBusLoading" class="max-w-7xl mx-auto px-6 py-8">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div class="lg:col-span-4 space-y-4">
           <div class="bg-white/[0.04] border border-white/10 rounded-2xl p-6 animate-pulse">
@@ -64,7 +64,7 @@
         <div class="lg:col-span-4 space-y-4 lg:sticky lg:top-24">
 
           <!-- No Bus Assigned -->
-          <section v-if="!store.driverBus" class="bg-white/[0.04] border border-white/10 rounded-2xl p-8 text-center">
+          <section v-if="!driverBus" class="bg-white/[0.04] border border-white/10 rounded-2xl p-8 text-center">
             <div class="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <svg class="w-7 h-7 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
             </div>
@@ -73,12 +73,12 @@
           </section>
 
           <!-- Trip Summary Card -->
-          <section v-if="store.driverBus" class="bg-white/[0.04] border border-white/10 rounded-2xl p-6">
+          <section v-if="driverBus" class="bg-white/[0.04] border border-white/10 rounded-2xl p-6">
             <div class="flex justify-between items-start mb-6">
               <div>
                 <p class="text-white/40 text-[10px] font-medium uppercase tracking-widest mb-1">Assigned Bus</p>
-                <h2 class="text-white text-3xl font-bold tracking-tight">{{ store.driverBus.plate }}</h2>
-                <p v-if="store.driverBus.capacity" class="text-white/30 text-xs mt-1">{{ store.driverBus.capacity }} seats total</p>
+                <h2 class="text-white text-3xl font-bold tracking-tight">{{ driverBus.plate }}</h2>
+                <p v-if="driverBus.capacity" class="text-white/30 text-xs mt-1">{{ driverBus.capacity }} seats total</p>
               </div>
               <div :class="tripStatusClass" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg uppercase tracking-wide">
                 {{ tripStatusText }}
@@ -124,7 +124,7 @@
           </section>
 
           <!-- Action Buttons -->
-          <section v-if="store.driverBus" class="grid grid-cols-2 gap-3">
+          <section v-if="driverBus" class="grid grid-cols-2 gap-3">
             <!-- Scan Ticket -->
             <button @click="isScannerOpen = true" class="col-span-2 flex items-center justify-center gap-2 p-4 bg-accent hover:bg-orange-600 text-white rounded-2xl transition-colors active:scale-[0.98]">
               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 8h12m4 12h2" /></svg>
@@ -331,13 +331,16 @@
 <script setup>
 import { ref, computed, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { store, t } from '../store.js'
+import { useUiStore } from '../stores/ui'
+import { useDriverBus, useBookings, useToggleBoarding, useUpdateBusStatus } from '../lib/queries'
 import { toast } from '../lib/toast.js'
 import PassengerManifest from '../components/PassengerManifest.vue'
 import QRScannerModal from '../components/QRScannerModal.vue'
 import { formatEthiopian } from '../lib/ethiopianCalendar.js'
 
 const router = useRouter()
+const ui = useUiStore()
+const { t } = ui
 const isScannerOpen = ref(false)
 const scanResult = ref(null)
 const isChatOpen = ref(false)
@@ -349,12 +352,10 @@ const chatEndRef = ref(null)
 const chatScrollRef = ref(null)
 let sosTimer = null
 
-// Refresh driver bus data on mount in case it wasn't loaded yet
-onMounted(async () => {
-  if (store.isAuthenticated && store.userProfile?.role === 'driver' && !store.driverBus) {
-    await store.fetchDriverBus().catch(() => {})
-  }
-})
+const { data: driverBusData, isLoading: isBusLoading } = useDriverBus(computed(() => ui.userProfile?.id).value)
+const { data: bookingsData } = useBookings()
+const toggleBoardingMutation = useToggleBoarding()
+const updateBusStatusMutation = useUpdateBusStatus()
 
 // Chat
 const chatMessages = ref([
@@ -382,8 +383,9 @@ function openChat() {
 }
 
 // Trip data
-const assignedRoute = computed(() => store.driverBus?.routes)
-const busStatus = computed(() => store.driverBus?.status || 'Active')
+const driverBus = computed(() => driverBusData.value)
+const assignedRoute = computed(() => driverBus.value?.routes)
+const busStatus = computed(() => driverBus.value?.status || 'Active')
 
 const tripStatusText = computed(() => {
   if (busStatus.value === 'On Route') return 'In Transit'
@@ -404,12 +406,14 @@ const assignedRouteText = computed(() => {
 
 const manifestoCount = computed(() => {
   if (!assignedRouteText.value) return 0
-  return store.bookings.filter(b => b.status === 'Confirmed' && b.route === assignedRouteText.value).length
+  const bookings = bookingsData.value || []
+  return bookings.filter(b => b.status === 'Confirmed' && b.route === assignedRouteText.value).length
 })
 
 const boardedCount = computed(() => {
   if (!assignedRouteText.value) return 0
-  return store.bookings.filter(b => b.status === 'Confirmed' && b.route === assignedRouteText.value && b.boarded).length
+  const bookings = bookingsData.value || []
+  return bookings.filter(b => b.status === 'Confirmed' && b.route === assignedRouteText.value && b.boarded).length
 })
 
 const noShowCount = computed(() => manifestoCount.value - boardedCount.value)
@@ -421,7 +425,8 @@ const boardingPercentage = computed(() => {
 
 // Ticket scanning — all validation happens here
 async function onTicketScanned(rawId) {
-  const booking = store.bookings.find(b => b.id === rawId)
+  const bookings = bookingsData.value || []
+  const booking = bookings.find(b => b.id === rawId)
 
   if (!booking) {
     const msg = 'Ticket not found in system'
@@ -454,22 +459,22 @@ async function onTicketScanned(rawId) {
     return
   }
 
-  await store.toggleBoarding(rawId)
+  await toggleBoardingMutation.mutateAsync({ id: rawId, boarded: true })
   const msg = `${booking.name} — Seat ${booking.seat_number || '?'}`
   scanResult.value = { type: 'success', message: msg }
   toast.success(`Boarded: ${msg}`)
 }
 
-function startTrip() {
-  if (!store.driverBus?.id) return
+async function startTrip() {
+  if (!driverBus.value?.id) return
   isDepartConfirmOpen.value = false
-  store.updateBusStatus(store.driverBus.id, 'On Route')
+  await updateBusStatusMutation.mutateAsync({ id: driverBus.value.id, status: 'On Route' })
   toast.success('Trip started — safe travels!')
 }
 
-function endTrip() {
-  if (!store.driverBus?.id) return
-  store.updateBusStatus(store.driverBus.id, 'Arrived')
+async function endTrip() {
+  if (!driverBus.value?.id) return
+  await updateBusStatusMutation.mutateAsync({ id: driverBus.value.id, status: 'Arrived' })
   toast.success(`Trip complete — ${boardedCount.value} boarded, ${noShowCount.value} no-show${noShowCount.value !== 1 ? 's' : ''}`)
 }
 
@@ -492,9 +497,10 @@ function triggerSOS() {
 }
 
 async function handleSignOut() {
-  await store.signOut()
+  await ui.signOut()
   router.push('/')
 }
+
 </script>
 
 <style scoped>

@@ -77,9 +77,10 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { store } from '../store.js'
+import { useUiStore } from '../stores/ui'
 
 const router = useRouter()
+const ui = useUiStore()
 const isLoading = ref(false)
 const authError = ref('')
 
@@ -97,14 +98,17 @@ const handleSubmit = async () => {
   authError.value = ''
   
   try {
-    // We now await the entire process including profile synchronization
-    await store.signIn(email.value, password.value)
+    await ui.signIn(email.value, password.value)
     
-    // Once signed in, we have the role immediately available
-    if (store.userProfile?.role === 'admin') {
+    const role = ui.userProfile?.role
+    if (role === 'admin') {
       router.push('/admin')
-    } else {
+    } else if (role === 'driver') {
       router.push('/driver')
+    } else if (role === 'station_master') {
+      router.push('/station')
+    } else {
+      router.push('/')
     }
   } catch (err) {
     authError.value = err.message || 'Authentication failed. Please check your credentials.'
@@ -112,6 +116,7 @@ const handleSubmit = async () => {
     isLoading.value = false
   }
 }
+
 </script>
 
 <style scoped></style>

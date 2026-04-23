@@ -31,7 +31,7 @@
                 <label class="block text-xs sm:text-sm font-medium text-text-primary mb-1.5">{{ t('departure') }}</label>
                 <select v-model="fromCity" class="custom-select w-full px-3 sm:px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent transition-all">
                   <option value="">{{ t('select_departure') }}</option>
-                  <option v-for="(name, id) in store.translations[store.activeLang].cities" :key="id" :value="id">
+                  <option v-for="(name, id) in ui.translations[ui.activeLang].cities" :key="id" :value="id">
                     {{ name }}
                   </option>
                 </select>
@@ -48,7 +48,7 @@
                 <label class="block text-xs sm:text-sm font-medium text-text-primary mb-1.5">{{ t('destination') }}</label>
                 <select v-model="toCity" class="custom-select w-full px-3 sm:px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent transition-all">
                   <option value="">{{ t('select_destination') }}</option>
-                  <option v-for="(name, id) in store.translations[store.activeLang].cities" :key="id" :value="id">
+                  <option v-for="(name, id) in ui.translations[ui.activeLang].cities" :key="id" :value="id">
                     {{ name }}
                   </option>
                 </select>
@@ -155,7 +155,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { store, t } from '../store.js'
+import { useUiStore } from '../stores/ui'
+import { useRoutes } from '../lib/queries'
 import { useMeta } from '../lib/useMeta.js'
 import MainHeader from '../components/MainHeader.vue'
 import AppButton from '../components/AppButton.vue'
@@ -163,6 +164,9 @@ import OnboardingGuide from '../components/OnboardingGuide.vue'
 import DatePickerEthiopian from '../components/DatePickerEthiopian.vue'
 
 const router = useRouter()
+const ui = useUiStore()
+const { t } = ui
+const { data: routesData } = useRoutes()
 const { setMeta } = useMeta()
 
 onMounted(() => {
@@ -175,14 +179,6 @@ onMounted(() => {
 const fromCity   = ref('')
 const toCity     = ref('')
 const travelDate = ref('')
-
-const cityLabels = {
-  'negele-borena': 'Negele Borena',
-  'addis-ababa':   'Addis Ababa',
-  'hawassa':       'Hawassa',
-  'moyale':        'Moyale',
-  'yabello':       'Yabello',
-}
 
 function swap() {
   const tmp = fromCity.value
@@ -222,11 +218,12 @@ const searchSpecific = (from, to) => {
   });
 }
 
-// Map dynamic popular routes from store
+// Map dynamic popular routes from routes data
 const dynamicRoutes = computed(() => {
-  return store.routes.filter(r => r.active).map(r => {
+  const routes = routesData.value || []
+  return routes.filter(r => r.active).map(r => {
     // Find city slugs by matching English names from the 'en' dictionary
-    const enCities = store.translations.en.cities
+    const enCities = ui.translations.en.cities
     const fromSlug = Object.keys(enCities).find(k => enCities[k].toLowerCase() === r.from.toLowerCase()) || r.from
     const toSlug   = Object.keys(enCities).find(k => enCities[k].toLowerCase() === r.to.toLowerCase())   || r.to
     
@@ -238,6 +235,8 @@ const dynamicRoutes = computed(() => {
     }
   }).slice(0, 4)
 })
+
+
 </script>
 
 <style scoped>

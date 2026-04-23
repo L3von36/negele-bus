@@ -77,7 +77,7 @@
       <div class="px-4 py-6 border-t border-border">
         <div class="px-3 mb-4">
           <p class="text-[10px] font-black text-white/40 uppercase tracking-widest">Logged in as</p>
-          <p class="text-white font-bold text-sm truncate">{{ store.userProfile?.full_name || 'Administrator' }}</p>
+          <p class="text-white font-bold text-sm truncate">{{ ui.userProfile?.full_name || 'Administrator' }}</p>
         </div>
         <button @click="handleSignOut" class="w-full flex items-center px-3 py-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-all text-sm font-bold">
           <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -100,7 +100,7 @@
         </div>
         <div class="flex items-center gap-3">
           <div class="w-8 h-8 bg-primary-100 rounded-full border border-border flex items-center justify-center text-text-primary font-bold text-xs flex-shrink-0">
-            {{ store.userProfile?.full_name?.charAt(0) || 'A' }}
+            {{ ui.userProfile?.full_name?.charAt(0) || 'A' }}
           </div>
           <button
             @click="handleSignOut"
@@ -126,7 +126,7 @@
               </div>
               <div>
                 <p class="text-xs font-semibold text-text-secondary uppercase tracking-wider">Total Bookings</p>
-                <h3 class="text-2xl font-bold text-text-primary mt-0.5">{{ store.bookings.length }}</h3>
+                <h3 class="text-2xl font-bold text-text-primary mt-0.5">{{ bookings.length }}</h3>
               </div>
             </div>
             
@@ -136,7 +136,7 @@
               </div>
               <div>
                 <p class="text-xs font-semibold text-text-secondary uppercase tracking-wider">Total Revenue</p>
-                <h3 class="text-2xl font-bold text-text-primary mt-0.5">{{ store.totalRevenue }} ETB</h3>
+                <h3 class="text-2xl font-bold text-text-primary mt-0.5">{{ totalRevenue }} ETB</h3>
               </div>
             </div>
 
@@ -146,7 +146,7 @@
               </div>
               <div>
                 <p class="text-xs font-semibold text-text-secondary uppercase tracking-wider">Active Routes</p>
-                <h3 class="text-2xl font-bold text-text-primary mt-0.5">{{ store.routes.filter(r => r.active).length }}</h3>
+                <h3 class="text-2xl font-bold text-text-primary mt-0.5">{{ routes.filter(r => r.active).length }}</h3>
               </div>
             </div>
 
@@ -156,7 +156,7 @@
               </div>
               <div>
                 <p class="text-xs font-semibold text-text-secondary uppercase tracking-wider">Active Buses</p>
-                <h3 class="text-2xl font-bold text-text-primary mt-0.5">{{ store.activeBusesCount }}</h3>
+                <h3 class="text-2xl font-bold text-text-primary mt-0.5">{{ activeBusesCount }}</h3>
               </div>
             </div>
           </div>
@@ -213,7 +213,7 @@
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-text-primary">#{{ booking.id.slice(0, 8) }}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
                     {{ booking.name }}<br>
-                    <span class="text-xs">{{ formatEthiopian(new Date(booking.date), store, t) }}</span>
+                    <span class="text-xs">{{ formatEthiopian(new Date(booking.date), ui, t) }}</span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary font-medium">{{ booking.route }}</td>
                   <td class="px-6 py-4 whitespace-nowrap">
@@ -222,8 +222,8 @@
                     <span v-else class="px-2.5 py-1 inline-flex text-[10px] leading-4 font-bold rounded-full bg-red-100 text-red-800 uppercase tracking-wider">Canceled</span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
-                    <button v-if="booking.status !== 'Canceled'" @click="showConfirm('Cancel this booking?', () => store.cancelBooking(booking.id))" class="text-red-500 hover:text-red-700 font-medium ml-3">Cancel</button>
-                    <button v-if="booking.status === 'Canceled'" @click="store.confirmBooking(booking.id)" class="text-green-500 hover:text-green-700 font-medium ml-3">Confirm</button>
+                    <button v-if="booking.status !== 'Canceled'" @click="showConfirm('Cancel this booking?', () => updateBookingStatusMutation.mutate({ id: booking.id, status: 'Canceled' }))" class="text-red-500 hover:text-red-700 font-medium ml-3">Cancel</button>
+                    <button v-if="booking.status === 'Canceled'" @click="updateBookingStatusMutation.mutate({ id: booking.id, status: 'Confirmed' })" class="text-green-500 hover:text-green-700 font-medium ml-3">Confirm</button>
                   </td>
                 </tr>
               </tbody>
@@ -283,7 +283,7 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-border bg-card">
-                  <tr v-for="route in store.routes" :key="route.id" class="hover:bg-primary-100/30 transition-colors">
+                  <tr v-for="route in routes" :key="route.id" class="hover:bg-primary-100/30 transition-colors">
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-text-primary">{{ route.from }} → {{ route.to }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">{{ route.distance || 'N/A' }} | {{ route.duration || 'N/A' }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary font-medium">{{ route.price }} ETB</td>
@@ -295,8 +295,8 @@
                       <div class="flex items-center justify-end space-x-3">
                         <button @click="openSeatMap(route.id)" class="text-blue-500 hover:text-blue-700 font-medium">Seats</button>
                         <button @click="openEditRoute(route)" class="text-orange-500 hover:text-orange-700 font-medium">Edit</button>
-                        <button @click="store.toggleRouteStatus(route.id)" class="text-text-secondary hover:text-black font-medium">Toggle</button>
-                        <button @click="showConfirm(`Delete route ${route.from} → ${route.to}? This cannot be undone.`, () => store.deleteRoute(route.id))" class="text-red-500 hover:text-red-700 font-medium">Delete</button>
+                        <button @click="toggleRouteStatusMutation.mutate({ id: route.id, active: !route.active })" class="text-text-secondary hover:text-black font-medium">Toggle</button>
+                        <button @click="showConfirm(`Delete route ${route.from} → ${route.to}? This cannot be undone.`, () => deleteRouteMutation.mutate(route.id))" class="text-red-500 hover:text-red-700 font-medium">Delete</button>
                       </div>
                     </td>
                   </tr>
@@ -343,17 +343,17 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-border bg-card">
-                  <tr v-for="bus in store.buses" :key="bus.id" class="hover:bg-primary-100/30 transition-colors">
+                  <tr v-for="bus in buses" :key="bus.id" class="hover:bg-primary-100/30 transition-colors">
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-text-primary">{{ bus.plate }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">{{ bus.capacity }} seats</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <select
                         :value="bus.route_id ?? ''"
-                        @change="(e) => store.assignRouteToBus(bus.id, e.target.value)"
+                        @change="(e) => assignRouteToBusMutation.mutate({ busId: bus.id, routeId: e.target.value })"
                         class="text-xs bg-white border border-border rounded px-2 py-1 focus:ring-1 focus:ring-accent outline-none"
                       >
                         <option value="">Unassigned</option>
-                        <option v-for="r in store.routes" :key="r.id" :value="r.id">
+                        <option v-for="r in routes" :key="r.id" :value="r.id">
                           {{ r.from }} → {{ r.to }}
                         </option>
                       </select>
@@ -361,11 +361,11 @@
                     <td class="px-6 py-4 whitespace-nowrap">
                       <select
                         :value="bus.driver_id ?? ''"
-                        @change="(e) => store.assignDriverToBus(bus.id, e.target.value)"
+                        @change="(e) => assignDriverToBusMutation.mutate({ busId: bus.id, driverId: e.target.value })"
                         class="text-xs bg-white border border-border rounded px-2 py-1 focus:ring-1 focus:ring-accent outline-none w-full max-w-[150px]"
                       >
                         <option value="">Unassigned</option>
-                        <option v-for="d in store.drivers" :key="d.id" :value="d.id">
+                        <option v-for="d in drivers" :key="d.id" :value="d.id">
                           {{ d.full_name || d.email }}
                         </option>
                       </select>
@@ -378,8 +378,8 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
                       <div class="flex items-center justify-end gap-3">
-                        <button @click="store.updateBusStatus(bus.id, bus.status === 'Active' ? 'Maintenance' : 'Active')" class="text-accent hover:text-orange-700 font-medium">Toggle</button>
-                        <button @click="showConfirm(`Remove bus ${bus.plate} from fleet? This cannot be undone.`, () => store.deleteBus(bus.id))" class="text-red-500 hover:text-red-700 font-medium">Delete</button>
+                        <button @click="updateBusStatusMutation.mutate({ id: bus.id, status: bus.status === 'Active' ? 'Maintenance' : 'Active' })" class="text-accent hover:text-orange-700 font-medium">Toggle</button>
+                        <button @click="showConfirm(`Remove bus ${bus.plate} from fleet? This cannot be undone.`, () => deleteBusMutation.mutate(bus.id))" class="text-red-500 hover:text-red-700 font-medium">Delete</button>
                       </div>
                     </td>
                   </tr>
@@ -393,7 +393,7 @@
         <div v-if="currentTab === 'Drivers'" class="animate-fade-in bg-card rounded-xl border border-border shadow-soft overflow-hidden">
           <div class="px-6 py-5 border-b border-border flex items-center justify-between">
             <h3 class="text-lg font-bold text-text-primary">Driver Roster</h3>
-            <span class="text-sm text-text-secondary">{{ store.drivers.length }} driver{{ store.drivers.length !== 1 ? 's' : '' }}</span>
+            <span class="text-sm text-text-secondary">{{ drivers.length }} driver{{ drivers.length !== 1 ? 's' : '' }}</span>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse min-w-[600px]">
@@ -405,10 +405,10 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-border bg-card">
-                <tr v-if="store.drivers.length === 0">
+                <tr v-if="drivers.length === 0">
                   <td colspan="3" class="px-6 py-12 text-center text-sm text-text-secondary">No drivers found. Check Supabase RLS policies.</td>
                 </tr>
-                <tr v-for="driver in store.drivers" :key="driver.id" class="hover:bg-primary-100/30 transition-colors">
+                <tr v-for="driver in drivers" :key="driver.id" class="hover:bg-primary-100/30 transition-colors">
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-text-primary">{{ driver.full_name || '—' }}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
                     <span v-if="driverBus(driver.id)" class="font-medium text-text-primary">{{ driverBus(driver.id).plate }}</span>
@@ -455,7 +455,14 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { store, t } from '../store.js'
+import { useUiStore } from '../stores/ui'
+import { 
+  useRoutes, useBuses, useBookings, useDrivers, 
+  useAddRoute, useDeleteRoute, useToggleRouteStatus,
+  useAddBus, useDeleteBus, useUpdateBusStatus,
+  useAssignRouteToBus, useAssignDriverToBus,
+  useUpdateBookingStatus
+} from '../lib/queries'
 import AdminCharts from '../components/AdminCharts.vue'
 import SeatMapModal from '../components/SeatMapModal.vue'
 import EditRouteModal from '../components/EditRouteModal.vue'
@@ -465,8 +472,25 @@ import DatePickerEthiopian from '../components/DatePickerEthiopian.vue'
 import { formatEthiopian, currentEthiopian } from '../lib/ethiopianCalendar.js'
 
 const router = useRouter()
+const ui = useUiStore()
+const { t } = ui
 const isSidebarOpen = ref(false)
 const currentTab = ref('Overview')
+
+const { data: routesData } = useRoutes()
+const { data: busesData } = useBuses()
+const { data: bookingsData } = useBookings()
+const { data: driversData } = useDrivers()
+
+const addRouteMutation = useAddRoute()
+const deleteRouteMutation = useDeleteRoute()
+const toggleRouteStatusMutation = useToggleRouteStatus()
+const addBusMutation = useAddBus()
+const deleteBusMutation = useDeleteBus()
+const updateBusStatusMutation = useUpdateBusStatus()
+const assignRouteToBusMutation = useAssignRouteToBus()
+const assignDriverToBusMutation = useAssignDriverToBus()
+const updateBookingStatusMutation = useUpdateBookingStatus()
 
 // ── Route Management ──────────────────────────────────────────────
 const newRoute = reactive({ from: '', to: '', price: null, distance: '---', duration: '---', active: true })
@@ -477,7 +501,7 @@ async function handleNewRoute() {
   if (newRoute.from && newRoute.to && newRoute.price) {
     isAddingRoute.value = true
     try {
-      await store.addRoute({ ...newRoute })
+      await addRouteMutation.mutateAsync({ ...newRoute })
       newRoute.from = ''
       newRoute.to = ''
       newRoute.price = null
@@ -505,7 +529,7 @@ async function handleNewBus() {
   if (newBus.plate && newBus.capacity) {
     isAddingBus.value = true
     try {
-      await store.addBus({ ...newBus })
+      await addBusMutation.mutateAsync({ ...newBus })
       newBus.plate = ''
       newBus.capacity = null
     } finally {
@@ -516,7 +540,8 @@ async function handleNewBus() {
 
 // ── Drivers ───────────────────────────────────────────────────────
 function driverBus(driverId) {
-  return store.buses.find(b => b.driver_id === driverId) || null
+  const buses = busesData.value || []
+  return buses.find(b => b.driver_id === driverId) || null
 }
 
 // ── Booking Search, Filter & Pagination ──────────────────────────
@@ -527,7 +552,7 @@ const currentPage = ref(1)
 const pageSize = 20
 
 const filteredBookings = computed(() => {
-  let list = store.bookings
+  let list = bookingsData.value || []
   if (bookingStatusFilter.value) list = list.filter(b => b.status === bookingStatusFilter.value)
   if (bookingDateFilter.value) list = list.filter(b => b.date && b.date.includes(bookingDateFilter.value))
   if (bookingSearch.value) {
@@ -583,7 +608,7 @@ function exportCSV() {
     b.id,
     csvEscape(b.name),
     csvEscape(b.route),
-    csvEscape(formatEthiopian(new Date(b.date), store, t)),
+    csvEscape(formatEthiopian(new Date(b.date), ui, t)),
     b.amount,
     b.status
   ])
@@ -598,9 +623,28 @@ function exportCSV() {
   document.body.removeChild(link)
 }
 
+const totalRevenue = computed(() => {
+  const list = bookingsData.value || []
+  return list
+    .filter(b => b.status === 'Confirmed' || b.status === 'Completed')
+    .reduce((sum, b) => sum + Number(b.amount), 0)
+})
+
+const activeBusesCount = computed(() => {
+  const list = busesData.value || []
+  return list.filter(b => b.status === 'Active').length
+})
+
+const routes = computed(() => routesData.value || [])
+const buses = computed(() => busesData.value || [])
+const drivers = computed(() => driversData.value || [])
+const bookings = computed(() => bookingsData.value || [])
+
 // ── Auth ──────────────────────────────────────────────────────────
 async function handleSignOut() {
-  await store.signOut()
+  await ui.signOut()
   router.push('/login')
 }
+
+
 </script>

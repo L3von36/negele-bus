@@ -1,10 +1,12 @@
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
+import { VueQueryPlugin } from '@tanstack/vue-query'
 import * as Sentry from '@sentry/vue'
 import posthog from 'posthog-js'
 import './style.css'
 import App from './App.vue'
 import router from './router'
-import { store } from './store'
+import { useUiStore } from './stores/ui'
 import { toast } from './lib/toast'
 import { registerSW } from 'virtual:pwa-register'
 
@@ -12,6 +14,10 @@ import { registerSW } from 'virtual:pwa-register'
 registerSW({ immediate: true })
 
 const app = createApp(App)
+const pinia = createPinia()
+
+app.use(pinia)
+app.use(VueQueryPlugin)
 
 // Initialize Sentry
 if (import.meta.env.VITE_SENTRY_DSN) {
@@ -36,8 +42,7 @@ if (import.meta.env.VITE_POSTHOG_KEY) {
   })
 }
 
-// Top-level error boundary: a component that throws during render shouldn't
-// white-screen the whole app. Capture to Sentry and show the user a toast.
+// Top-level error boundary
 app.config.errorHandler = (err, instance, info) => {
   console.error('[vue.errorHandler]', err, info)
   try { Sentry.captureException(err, { extra: { info } }) } catch (_) {}
@@ -48,12 +53,11 @@ window.addEventListener('unhandledrejection', (event) => {
   try { Sentry.captureException(event.reason) } catch (_) {}
 })
 
-// Online/offline indicator. The PWA was registered above but the app had no
-// way to surface connectivity loss to the user.
 window.addEventListener('offline', () => toast.error('You are offline. Bookings may fail until you reconnect.', { timeout: 0 }))
 window.addEventListener('online',  () => toast.success('Back online.'))
 
-// Initialize Supabase data and subscriptions
-store.init()
+// Initialize UI Store (Auth check)
+const ui = useUiStore()
+ui.init()
 
-app.use(router).mount('#app')
+app.use(router).mount('#app')

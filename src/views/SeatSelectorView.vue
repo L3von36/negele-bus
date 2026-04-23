@@ -104,13 +104,19 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { store, t } from '../store.js'
+import { useUiStore } from '../stores/ui'
+import { useBookings, useRoutes } from '../lib/queries'
 import MainHeader from '../components/MainHeader.vue'
 import AppButton from '../components/AppButton.vue'
 import { formatEthiopian } from '../lib/ethiopianCalendar.js'
 
 const router = useRouter()
 const route  = useRoute()
+const ui = useUiStore()
+const { t } = ui
+
+const { data: bookingsData } = useBookings()
+const { data: routesData } = useRoutes()
 
 const busName  = computed(() => route.query.bus     || 'Ethio Bus')
 const busId    = computed(() => route.query.busId   || '')
@@ -123,36 +129,32 @@ const routeId  = computed(() => route.query.routeId || '')
 const capacity = computed(() => Number(route.query.capacity) || 44)
 
 const dateRaw     = computed(() => route.query.date        || new Date().toISOString().split('T')[0])
-const dateDisplay = computed(() => route.query.dateDisplay || formatEthiopian(new Date(dateRaw.value), store, t))
+const dateDisplay = computed(() => route.query.dateDisplay || formatEthiopian(new Date(dateRaw.value), t))
 const date        = dateDisplay
 
 const fromDisplay = computed(() => t('cities.' + from.value) || from.value)
 const toDisplay   = computed(() => t('cities.' + to.value)   || to.value)
 
-// Get taken seats from live bookings + admin-blocked seats.
-// Prefer the new structured columns (bus_id, travel_date, depart_time) when they
-// exist on a booking — fall back to the legacy route/date string match so old
-// bookings still block seats.
 const takenSeats = computed(() => {
   const routeStr   = `${fromDisplay.value} → ${toDisplay.value}`
   const dateDepart = dateRaw.value + ', ' + depart.value
+  const bookings = bookingsData.value || []
 
-  const bookedSeats = store.bookings
+  const bookedSeats = bookings
     .filter(b => {
       if (b.status !== 'Confirmed') return false
-      // New bookings carry bus_id + travel_date + depart_time
       if (b.bus_id && b.travel_date && b.depart_time) {
         return b.bus_id === busId.value &&
                b.travel_date === dateRaw.value &&
                b.depart_time === depart.value
       }
-      // Legacy bookings: match by route string + combined date string
       return b.route === routeStr && b.date === dateDepart
     })
     .map(b => Number(b.seat_number))
     .filter(Boolean)
 
-  const targetRoute  = store.routes.find(r => r.id === routeId.value)
+  const routes = routesData.value || []
+  const targetRoute  = routes.find(r => r.id === routeId.value)
   const adminBlocked = targetRoute?.blockedSeats || []
 
   return [...new Set([...bookedSeats, ...adminBlocked])]
@@ -202,12 +204,13 @@ function confirmSeat() {
       to: to.value,
       depart: depart.value,
       seat: selectedSeat.value,
-      date: dateRaw.value,        // Gregorian date — stored in DB
-      dateDisplay: dateDisplay.value, // Ethiopian date — for display only
+      date: dateRaw.value,
+      dateDisplay: dateDisplay.value,
       routeId: routeId.value,
     }
   })
 }
+
 </script>
 
 <style scoped></style>

@@ -20,7 +20,8 @@
 
 <script setup>
 import { computed } from 'vue'
-import { store } from '../store.js'
+import { useUiStore } from '../stores/ui'
+import { useBookings } from '../lib/queries'
 
 import {
   Chart as ChartJS,
@@ -37,17 +38,21 @@ import { Bar, Doughnut } from 'vue-chartjs'
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement)
 
 import { getRecentEthiopianDates } from '../lib/ethiopianCalendar.js'
-import { t } from '../store.js'
+
+const ui = useUiStore()
+const { t } = ui
+const { data: bookingsData } = useBookings()
+const bookings = computed(() => bookingsData.value || [])
 
 // Compute dynamic chart data based on store
 const revenueData = computed(() => {
-  const labels = getRecentEthiopianDates(6, store, t)
+  const labels = getRecentEthiopianDates(6, ui, t)
   const now = new Date()
   const dayRevenue = Array.from({ length: 6 }, (_, i) => {
     const day = new Date(now)
     day.setDate(day.getDate() - (5 - i))
     const dayStr = day.toISOString().split('T')[0]
-    return store.bookings
+    return bookings.value
       .filter(b => {
         if (b.status === 'Canceled') return false
         const bDate = b.travel_date || (b.created_at ? b.created_at.split('T')[0] : '')
@@ -82,7 +87,7 @@ const barOptions = {
 
 const routeData = computed(() => {
   const counts = {}
-  store.bookings.forEach(b => {
+  bookings.value.forEach(b => {
     if (b.status === 'Canceled') return
     const key = b.route || 'Other'
     counts[key] = (counts[key] || 0) + 1
@@ -108,4 +113,5 @@ const pieOptions = {
     legend: { position: 'right' }
   }
 }
+
 </script>

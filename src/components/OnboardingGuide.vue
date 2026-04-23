@@ -71,7 +71,7 @@
                      <div class="flex items-center gap-2">
                        <div :class="['relative transition-all duration-500', highlightEl === 'dropdown' ? 'scale-110' : '']">
                          <div :class="['bg-white/5 text-white text-[8px] font-bold uppercase py-1.5 pl-2 pr-6 rounded-lg border transition-all duration-500', highlightEl === 'dropdown' ? 'border-accent bg-accent/20' : 'border-white/10']">
-                           {{ store.activeLang === 'en' ? 'EN' : store.activeLang === 'am' ? 'አማ' : 'OM' }}
+                           {{ ui.activeLang === 'en' ? 'EN' : ui.activeLang === 'am' ? 'አማ' : 'OM' }}
                          </div>
                          <div class="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-white/40">
                            <svg xmlns="http://www.w3.org/2000/svg" class="h-2 w-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
@@ -102,9 +102,9 @@
                            <p class="text-[8px] font-black text-white/30 uppercase tracking-widest mb-3 px-1">{{ t('language') }}</p>
                            <div class="space-y-2">
                              <div v-for="(l, code) in {en: 'English (EN)', am: 'አማርኛ (አማ)', om: 'Afaan Oromo (OM)'}" :key="code"
-                               :class="['w-full py-2.5 px-3 rounded-xl border flex items-center justify-between transition-all duration-300', store.activeLang === code ? 'bg-accent/20 border-accent/40 text-white' : 'bg-white/5 border-white/10 text-white/40']">
+                               :class="['w-full py-2.5 px-3 rounded-xl border flex items-center justify-between transition-all duration-300', ui.activeLang === code ? 'bg-accent/20 border-accent/40 text-white' : 'bg-white/5 border-white/10 text-white/40']">
                                <span class="text-[10px] font-bold">{{ l }}</span>
-                               <div v-if="store.activeLang === code" class="w-2 h-2 rounded-full bg-accent"></div>
+                               <div v-if="ui.activeLang === code" class="w-2 h-2 rounded-full bg-accent"></div>
                              </div>
                            </div>
                         </div>
@@ -153,7 +153,7 @@
                     <!-- Date -->
                     <div :class="['rounded-xl p-2.5 border mb-2 transition-all duration-500', highlightEl === 'date' ? 'border-orange-400 bg-orange-50 shadow-md shadow-orange-100' : 'border-gray-200 bg-gray-50']">
                       <p class="text-[6px] font-black text-gray-400 uppercase tracking-widest">{{ t('date') }}</p>
-                      <p class="text-[9px] font-bold text-gray-800 mt-0.5">{{ formatEthiopian(new Date('2026-04-10'), store, t) }}</p>
+                      <p class="text-[9px] font-bold text-gray-800 mt-0.5">{{ formatEthiopian(new Date('2026-04-10'), ui, t) }}</p>
                     </div>
                     <!-- Search btn -->
                     <div :class="['w-full py-2 rounded-xl text-[8px] font-black uppercase tracking-widest text-center transition-all duration-500', highlightEl === 'search' ? 'bg-accent text-white scale-105 shadow-lg shadow-orange-300' : 'bg-gray-900 text-white']">
@@ -405,8 +405,11 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { store, t } from '../store.js'
+import { useUiStore } from '../stores/ui'
+const ui = useUiStore()
+const { t } = ui
 import { formatEthiopian } from '../lib/ethiopianCalendar.js'
+
 
 const steps = computed(() => [
   {
@@ -484,7 +487,7 @@ const qrPattern = [
 const ticketDetails = computed(() => [
   { label: t('passenger'), val: 'Abebe Girma' },
   { label: t('phone'), val: '0912 345 678' },
-  { label: t('date'), val: formatEthiopian(new Date('2026-04-10'), store, t) },
+  { label: t('date'), val: formatEthiopian(new Date('2026-04-10'), ui, t) },
   { label: t('seat'), val: '#5' },
   { label: t('bus'), val: `${t('brand_name')} Express` },
 ])

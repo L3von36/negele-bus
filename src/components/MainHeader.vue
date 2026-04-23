@@ -37,8 +37,8 @@
         <!-- Language Switcher Dropdown -->
         <div class="relative">
           <select 
-            :value="store.activeLang" 
-            @change="(e) => store.setLanguage(e.target.value)"
+            :value="ui.activeLang" 
+            @change="(e) => ui.setLanguage(e.target.value)"
             class="appearance-none bg-white/5 text-white text-[10px] sm:text-xs font-bold uppercase py-2 pl-3 pr-8 rounded-xl border border-white/10 focus:outline-none focus:ring-2 focus:ring-accent/50 cursor-pointer hover:bg-white/10 transition-all"
           >
             <option value="en" class="bg-[#1E293B] text-white">EN</option>
@@ -103,13 +103,15 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { store, t } from '../store.js'
+import { useUiStore } from '../stores/ui'
 
 const props = defineProps({
   showBack: { type: Boolean, default: false },
   transparent: { type: Boolean, default: false }
 })
 
+const ui = useUiStore()
+const { t } = ui
 const isMenuOpen = ref(false)
 const isScrolled = ref(false)
 
@@ -124,6 +126,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
 })
+
 </script>
 
 <style scoped>

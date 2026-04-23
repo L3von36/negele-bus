@@ -116,26 +116,31 @@
 <script setup>
 import { computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { store, t } from '../store.js'
+import { useUiStore } from '../stores/ui'
+import { useRoutes, useBuses } from '../lib/queries'
 import { useMeta } from '../lib/useMeta.js'
 import MainHeader from '../components/MainHeader.vue'
 import AppButton from '../components/AppButton.vue'
+import { formatEthiopian } from '../lib/ethiopianCalendar.js'
 
 const router = useRouter()
 const routeQuery = useRoute()
+const ui = useUiStore()
+const { t } = ui
 const { setMeta } = useMeta()
+
+const { data: routesData } = useRoutes()
+const { data: busesData } = useBuses()
 
 const from = computed(() => routeQuery.query.from || 'Addis Ababa')
 const to   = computed(() => routeQuery.query.to   || 'Hawassa')
 const dateInitial = computed(() => routeQuery.query.date || 'Today')
 
-import { formatEthiopian } from '../lib/ethiopianCalendar.js'
 const dateDisplay = computed(() => {
   const d = dateInitial.value === 'Today' ? new Date() : new Date(dateInitial.value)
-  return formatEthiopian(d, store, t)
+  return formatEthiopian(d, t)
 })
-// For internal logic/meta, we still use the searchable date or its display version where appropriate
-const date = dateDisplay // Use display version for the card UI
+const date = dateDisplay
 
 onMounted(() => {
   const fromName = routeQuery.query.from ? t('cities.' + routeQuery.query.from) : from.value
@@ -147,29 +152,25 @@ onMounted(() => {
   )
 })
 
-// Find the matching route in our store
 const matchingRoute = computed(() => {
-  // Try finding route by slugs first if possible, then fall back to name matching
+  const routes = routesData.value || []
   const fromVal = routeQuery.query.from || ''
   const toVal   = routeQuery.query.to   || ''
   
-  return store.routes.find(r => {
-    // Check if the input is a slug (key in our cities dict)
-    const isFromId = Object.keys(store.translations.en.cities).includes(fromVal)
-    const isToId   = Object.keys(store.translations.en.cities).includes(toVal)
+  return routes.find(r => {
+    const isFromId = Object.keys(ui.translations.en.cities).includes(fromVal)
+    const isToId   = Object.keys(ui.translations.en.cities).includes(toVal)
     
-    // Normalize r.from/r.to to slugs for comparison
-    const rFromSlug = Object.keys(store.translations.en.cities).find(k => store.translations.en.cities[k] === r.from)
-    const rToSlug   = Object.keys(store.translations.en.cities).find(k => store.translations.en.cities[k] === r.to)
+    const rFromSlug = Object.keys(ui.translations.en.cities).find(k => ui.translations.en.cities[k] === r.from)
+    const rToSlug   = Object.keys(ui.translations.en.cities).find(k => ui.translations.en.cities[k] === r.to)
 
     const fromMatch = isFromId ? fromVal === rFromSlug : fromVal.toLowerCase() === r.from.toLowerCase()
     const toMatch   = isToId   ? toVal   === rToSlug   : toVal.toLowerCase()   === r.to.toLowerCase()
     
     return fromMatch && toMatch
-  }) || store.routes[1] // Fallback to Negele -> Addis for demo if no match
+  })
 })
 
-// Fallback departure slots for buses that predate the depart_time column.
 const DEPARTURE_SLOTS_FALLBACK = ['06:00', '08:30', '12:00', '14:00', '16:30']
 
 function parseDurationToMinutes(str) {
@@ -186,12 +187,10 @@ function addMinutesToTime(time, minutes) {
   return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
-// Real buses from DB filtered by route assignment.
-// Reads depart_time from the bus record when available (post-migration),
-// so the departure time is data-driven rather than positional.
 const buses = computed(() => {
   if (!matchingRoute.value) return []
-  const routeBuses = store.buses.filter(b =>
+  const allBuses = busesData.value || []
+  const routeBuses = allBuses.filter(b =>
     b.route_id === matchingRoute.value.id && b.status !== 'Maintenance'
   )
   const durationMins = parseDurationToMinutes(matchingRoute.value.duration)
@@ -223,12 +222,13 @@ function selectBus(bus) {
       to: to.value,
       depart: bus.depart,
       arrive: bus.arrive,
-      date: dateInitial.value,   // Gregorian date for filtering
-      dateDisplay: date.value,   // Ethiopian date for display
+      date: dateInitial.value,
+      dateDisplay: date.value,
       routeId: matchingRoute.value?.id
     }
   })
 }
+
 </script>
 
 <style scoped></style>

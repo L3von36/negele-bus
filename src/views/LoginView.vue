@@ -105,9 +105,11 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { store, t } from '../store.js'
+import { useUiStore } from '../stores/ui'
 
 const router = useRouter()
+const ui = useUiStore()
+const { t } = ui
 const isDev = computed(() => import.meta.env.DEV)
 const isLoading = ref(false)
 const authError = ref('')
@@ -119,7 +121,7 @@ async function handleSubmit() {
   isLoading.value = true
   authError.value = ''
   try {
-    await store.signIn(email.value, password.value)
+    await ui.signIn(email.value, password.value)
     redirectByRole()
   } catch (err) {
     authError.value = mapError(err)
@@ -156,7 +158,7 @@ async function loginAsDemo(role) {
   authError.value = ''
   try {
     fillDemo(role)
-    await store.signIn(email.value, password.value)
+    await ui.signIn(email.value, password.value)
     redirectByRole()
   } catch (err) {
     authError.value = mapError(err)
@@ -166,7 +168,7 @@ async function loginAsDemo(role) {
 }
 
 function redirectByRole() {
-  const role = store.userProfile?.role
+  const role = ui.userProfile?.role
   const dest = {
     admin:          '/admin',
     driver:         '/driver',
@@ -177,4 +179,5 @@ function redirectByRole() {
   }[role] || '/'
   router.push(dest)
 }
+
 </script>

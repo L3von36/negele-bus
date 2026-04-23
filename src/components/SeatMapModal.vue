@@ -50,7 +50,7 @@
           <div class="grid grid-cols-4 gap-x-2 gap-y-4">
             <template v-for="seat in routeCapacity" :key="seat">
               <button
-                @click="store.toggleSeat(routeId, seat)"
+                @click="handleToggleSeat(seat)"
                 :aria-label="isBlocked(seat) ? `Seat ${seat} — blocked. Click to unblock` : `Seat ${seat} — available. Click to block`"
                 :class="[
                   'h-10 w-10 rounded-lg flex items-center justify-center text-xs font-bold transition-all border-2',
@@ -71,7 +71,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { store } from '../store.js'
+import { useBuses, useRoutes, useToggleSeat } from '../lib/queries'
 
 const props = defineProps({
   isOpen: Boolean,
@@ -80,15 +80,25 @@ const props = defineProps({
 
 defineEmits(['close'])
 
-const route = computed(() => store.routes.find(r => r.id === props.routeId) ?? null)
+const { data: busesData } = useBuses()
+const { data: routesData } = useRoutes()
+const toggleSeatMutation = useToggleSeat()
+
+const route = computed(() => (routesData.value || []).find(r => r.id === props.routeId) ?? null)
 
 // Use the capacity of the first bus assigned to this route; fallback to 40
 const routeCapacity = computed(() => {
-  const bus = store.buses.find(b => b.route_id === props.routeId)
+  const buses = busesData.value || []
+  const bus = buses.find(b => b.route_id === props.routeId)
   return bus?.capacity || 40
 })
 
 function isBlocked(seatNumber) {
   return (route.value?.blockedSeats || []).includes(seatNumber)
 }
+
+function handleToggleSeat(seatNumber) {
+  toggleSeatMutation.mutate({ routeId: props.routeId, seatNumber })
+}
+
 </script>

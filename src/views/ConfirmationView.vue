@@ -128,13 +128,15 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { store, t } from '../store.js'
+import { useUiStore } from '../stores/ui'
 import MainHeader from '../components/MainHeader.vue'
 import AppButton from '../components/AppButton.vue'
 import QrcodeVue from 'qrcode.vue'
 import { formatEthiopian } from '../lib/ethiopianCalendar.js'
 
 const route = useRoute()
+const ui = useUiStore()
+const { t } = ui
 
 const busName   = computed(() => route.query.bus    || 'Ethio Bus')
 const price     = computed(() => route.query.price  || 300)
@@ -143,7 +145,7 @@ const to        = computed(() => route.query.to     || 'Hawassa')
 const depart    = computed(() => route.query.depart || '06:00')
 const seat      = computed(() => route.query.seat   || 1)
 const dateInitial = computed(() => route.query.date || new Date().toISOString())
-const date      = computed(() => formatEthiopian(new Date(dateInitial.value), store, t))
+const date      = computed(() => formatEthiopian(new Date(dateInitial.value), ui, t))
 const name      = computed(() => route.query.name   || '—')
 const phone     = computed(() => route.query.phone  || '—')
 const bookingId = computed(() => route.query.id)
@@ -180,6 +182,7 @@ async function shareTicket() {
     })
   } catch (_) {}
 }
+
 </script>
 
 <style scoped></style>

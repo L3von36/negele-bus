@@ -12,7 +12,7 @@
           </div>
         </div>
         <div class="flex items-center gap-3">
-          <span class="hidden sm:block text-white/40 text-xs">{{ store.userProfile?.full_name || 'Authority Officer' }}</span>
+          <span class="hidden sm:block text-white/40 text-xs">{{ ui.userProfile?.full_name || 'Authority Officer' }}</span>
           <button @click="handleSignOut" class="h-9 px-4 flex items-center gap-2 text-white/40 hover:text-white bg-white/5 border border-white/10 rounded-xl transition-colors text-[10px] font-medium uppercase tracking-wide">
             Sign Out
           </button>
@@ -26,20 +26,20 @@
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="bg-card p-5 rounded-xl border border-border shadow-soft">
           <p class="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">Total Bookings</p>
-          <p class="text-3xl font-bold text-text-primary">{{ store.bookings.length }}</p>
+          <p class="text-3xl font-bold text-text-primary">{{ bookings.length }}</p>
         </div>
         <div class="bg-card p-5 rounded-xl border border-border shadow-soft">
           <p class="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">Total Revenue</p>
-          <p class="text-3xl font-bold text-text-primary">{{ store.totalRevenue.toLocaleString() }}</p>
+          <p class="text-3xl font-bold text-text-primary">{{ totalRevenue.toLocaleString() }}</p>
           <p class="text-xs text-text-secondary">ETB</p>
         </div>
         <div class="bg-card p-5 rounded-xl border border-border shadow-soft">
           <p class="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">Active Routes</p>
-          <p class="text-3xl font-bold text-text-primary">{{ store.routes.filter(r => r.active).length }}</p>
+          <p class="text-3xl font-bold text-text-primary">{{ routes.filter(r => r.active).length }}</p>
         </div>
         <div class="bg-card p-5 rounded-xl border border-border shadow-soft">
           <p class="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">Fleet Size</p>
-          <p class="text-3xl font-bold text-text-primary">{{ store.buses.length }}</p>
+          <p class="text-3xl font-bold text-text-primary">{{ buses.length }}</p>
         </div>
       </div>
 
@@ -94,10 +94,10 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-border">
-              <tr v-if="store.routes.length === 0">
+              <tr v-if="routes.length === 0">
                 <td colspan="5" class="px-6 py-12 text-center text-sm text-text-secondary">No routes registered.</td>
               </tr>
-              <tr v-for="r in store.routes" :key="r.id" class="hover:bg-primary-100/20 transition-colors">
+              <tr v-for="r in routes" :key="r.id" class="hover:bg-primary-100/20 transition-colors">
                 <td class="px-6 py-4 text-sm font-bold text-text-primary">{{ r.from }} → {{ r.to }}</td>
                 <td class="px-6 py-4 text-sm text-text-secondary">{{ r.distance || '—' }}</td>
                 <td class="px-6 py-4 text-sm text-text-secondary font-medium">{{ r.price }} ETB</td>
@@ -119,24 +119,41 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { store } from '../store.js'
+import { useUiStore } from '../stores/ui'
+import { useBookings, useRoutes, useBuses } from '../lib/queries'
 
 const router = useRouter()
+const ui = useUiStore()
 
-const unassignedBuses  = computed(() => store.buses.filter(b => !b.route_id && b.status !== 'Maintenance').length)
-const maintenanceBuses = computed(() => store.buses.filter(b => b.status === 'Maintenance').length)
+const { data: bookingsData } = useBookings()
+const { data: routesData } = useRoutes()
+const { data: busesData } = useBuses()
+
+const bookings = computed(() => bookingsData.value || [])
+const routes = computed(() => routesData.value || [])
+const buses = computed(() => busesData.value || [])
+
+const totalRevenue = computed(() => {
+  return bookings.value
+    .filter(b => b.status !== 'Canceled')
+    .reduce((s, b) => s + Number(b.amount || 0), 0)
+})
+
+const unassignedBuses  = computed(() => buses.value.filter(b => !b.route_id && b.status !== 'Maintenance').length)
+const maintenanceBuses = computed(() => buses.value.filter(b => b.status === 'Maintenance').length)
 const cancelRate = computed(() => {
-  const total = store.bookings.length
+  const total = bookings.value.length
   if (!total) return 0
-  return Math.round((store.bookings.filter(b => b.status === 'Canceled').length / total) * 100)
+  return Math.round((bookings.value.filter(b => b.status === 'Canceled').length / total) * 100)
 })
 
 function busesOnRoute(routeId) {
-  return store.buses.filter(b => b.route_id === routeId).length
+  return buses.value.filter(b => b.route_id === routeId).length
 }
 
 async function handleSignOut() {
-  await store.signOut()
+  await ui.signOut()
   router.push('/login')
 }
+
 </script>

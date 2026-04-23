@@ -20,7 +20,7 @@
       </nav>
       <div class="px-4 py-6 border-t border-border">
         <p class="text-[10px] font-black text-white/40 uppercase tracking-widest px-3 mb-2">Logged in as</p>
-        <p class="text-white font-bold text-sm px-3 truncate">{{ store.userProfile?.full_name || 'Finance Officer' }}</p>
+        <p class="text-white font-bold text-sm px-3 truncate">{{ ui.userProfile?.full_name || 'Finance Officer' }}</p>
         <button @click="handleSignOut" class="mt-4 w-full flex items-center px-3 py-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-all text-sm font-bold">
           <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
           Sign out
@@ -37,7 +37,7 @@
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div class="bg-card p-5 rounded-xl border border-border shadow-soft">
             <p class="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">Total Revenue</p>
-            <p class="text-2xl font-bold text-text-primary">{{ store.totalRevenue.toLocaleString() }}</p>
+            <p class="text-2xl font-bold text-text-primary">{{ totalRevenue.toLocaleString() }}</p>
             <p class="text-xs text-text-secondary mt-0.5">ETB</p>
           </div>
           <div class="bg-card p-5 rounded-xl border border-border shadow-soft">
@@ -131,20 +131,30 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { store } from '../store.js'
+import { useUiStore } from '../stores/ui'
+import { useBookings } from '../lib/queries'
 import AdminReports from '../components/AdminReports.vue'
 
 const router = useRouter()
+const ui = useUiStore()
 const tabs = ['Overview', 'By Route', 'Transactions']
 const currentTab = ref('Overview')
 
-const confirmedBookings = computed(() => store.bookings.filter(b => b.status !== 'Canceled'))
-const confirmedCount    = computed(() => store.bookings.filter(b => b.status === 'Confirmed').length)
-const canceledCount     = computed(() => store.bookings.filter(b => b.status === 'Canceled').length)
-const avgTicket         = computed(() => {
+const { data: bookingsData } = useBookings()
+const bookings = computed(() => bookingsData.value || [])
+
+const confirmedBookings = computed(() => bookings.value.filter(b => b.status !== 'Canceled'))
+const confirmedCount    = computed(() => bookings.value.filter(b => b.status === 'Confirmed').length)
+const canceledCount     = computed(() => bookings.value.filter(b => b.status === 'Canceled').length)
+
+const totalRevenue = computed(() => {
+  return confirmedBookings.value.reduce((s, b) => s + Number(b.amount || 0), 0)
+})
+
+const avgTicket = computed(() => {
   const c = confirmedBookings.value.filter(b => b.amount)
   if (!c.length) return 0
-  return Math.round(c.reduce((s, b) => s + Number(b.amount), 0) / c.length)
+  return Math.round(totalRevenue.value / c.length)
 })
 
 const routeStats = computed(() => {
@@ -180,7 +190,8 @@ function exportCSV() {
 }
 
 async function handleSignOut() {
-  await store.signOut()
+  await ui.signOut()
   router.push('/login')
 }
+
 </script>

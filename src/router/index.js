@@ -12,7 +12,7 @@ import StationMasterDashboard from '../views/StationMasterDashboard.vue'
 import FinanceDashboard      from '../views/FinanceDashboard.vue'
 import AuthorityDashboard    from '../views/AuthorityDashboard.vue'
 import InspectorDashboard    from '../views/InspectorDashboard.vue'
-import { store }             from '../store.js'
+import { useUiStore }         from '../stores/ui'
 
 const routes = [
   { path: '/',               name: 'home',          component: HomeView },
@@ -78,27 +78,29 @@ const ROLE_ROUTES = {
 }
 
 router.beforeEach(async (to, from, next) => {
+  const ui = useUiStore()
   const requiresAuth = to.meta.requiresAuth
   const requiredRole = to.meta.role
 
-  if (requiresAuth && !store.isAuthenticated) {
+  if (requiresAuth && !ui.isAuthenticated) {
     return next('/login')
   }
 
-  if (store.isAuthenticated && !store.userProfile) {
+  if (ui.isAuthenticated && !ui.userProfile) {
     let attempts = 0
-    while (!store.userProfile && attempts < 20) {
+    while (!ui.userProfile && attempts < 20) {
       await new Promise(r => setTimeout(r, 100))
       attempts++
     }
   }
 
-  if (requiredRole && store.userProfile?.role !== requiredRole) {
-    const homeForRole = ROLE_ROUTES[store.userProfile?.role]
+  if (requiredRole && ui.userProfile?.role !== requiredRole) {
+    const homeForRole = ROLE_ROUTES[ui.userProfile?.role]
     return next(homeForRole || '/')
   }
 
   next()
 })
+
 
 export default router

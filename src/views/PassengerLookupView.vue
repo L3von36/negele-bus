@@ -97,11 +97,14 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { store } from '../store.js'
+import { ref, computed } from 'vue'
+import { useBookings } from '../lib/queries'
 import MainHeader from '../components/MainHeader.vue'
 import AppButton from '../components/AppButton.vue'
 import QrcodeVue from 'qrcode.vue'
+
+const { data: bookingsData } = useBookings()
+const bookings = computed(() => bookingsData.value || [])
 
 const query = ref('')
 const results = ref([])
@@ -125,7 +128,7 @@ function search() {
 
   try {
     const lower = q.toLowerCase()
-    results.value = store.bookings.filter(b => {
+    results.value = bookings.value.filter(b => {
       return b.id.toLowerCase().startsWith(lower) ||
         (b.phone && b.phone.replace(/[\s\-]/g, '') === q.replace(/[\s\-]/g, ''))
     })
@@ -134,6 +137,7 @@ function search() {
     isSearching.value = false
   }
 }
+
 </script>
 
 <style scoped>
